@@ -127,6 +127,6 @@ public final class KeyScript {
 		} catch (IOException e) {
 			throw new RuntimeException("cannot write " + path, e);
 		}
-		System.out.println("[LAZYVM] saved " + path);
+		System.out.println("[LAZYVM] saved " + path + " (" + w + "x" + h + ")");
 	}
 }

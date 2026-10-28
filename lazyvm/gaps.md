@@ -125,7 +125,7 @@ is port code.
 | Building a 128 x 128 world (6 levels) | about 75 s, in one tick | The smallest size. Upstream ran it on a thread |
 | Map generation of one 128 x 128 level (`LevelGen.createAndValidateMap`, seed 0x100) | 11.0 s | 72 ms on HotSpot 8 (Temurin 1.8.0_504), about 150 times faster |
 | Entering the world (new or loaded) | ticks of 7 to 115 s for about 4 to 5 minutes | This "infdev" build generates 64 x 64 chunks 3 chunks around the player, a stage per tick, and saves on leaving the loading screen |
-| Walking in a loaded area | 1 to 2 fps, 15 to 27 tps; 21 to 45 ms/tick, 210 to 300 ms/frame | Night (light overlay on): about 300 ms/frame |
+| Walking in a loaded area | 1 to 2 fps, 15 to 35 tps; 20 to 45 ms/tick, 200 to 300 ms/frame | Same in the real window. Night (light overlay on): 230 to 300 ms/frame |
 
 One frame in the world, profiled (mean of 20): queuing the tiles and
 sprites (game code) 65 ms, drawing them into the pixel array 106 ms, the
@@ -165,3 +165,12 @@ Not LazyVM gaps in the java.* sense, but notes for the `lazy.gfx` API.
 - The mouse is not used by the game, so window-pixel coordinates were no
   problem here; a letterboxed game that uses the mouse would want frame
   coordinates.
+- **Window size and focus events.** In one windowed run, `capture()`,
+  `width()` and `height()` gave 0 x 0 for every capture after the world was
+  built (minutes without pumping), as for a minimized window; a second run
+  gave 864 x 576 throughout, and a 20 s busy-loop test (no `present` or
+  `poll`) kept 864 x 576, so the window was most likely minimized meanwhile.
+  `capture()` of a minimized window returning an empty array may surprise
+  callers. In that test the window also reported `RESIZE` 704 x 380 before
+  864 x 576, and no `FOCUS` event at all; the port therefore assumes focus
+  until told otherwise.

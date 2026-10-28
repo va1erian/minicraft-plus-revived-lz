@@ -1,6 +1,7 @@
 package minicraft.core;
 
 import lazy.gfx.Event;
+import lazy.gfx.Key;
 import lazy.gfx.Window;
 import minicraft.core.io.FileHandler;
 import minicraft.core.io.KeyScript;
@@ -150,10 +151,15 @@ public class Initializer extends Game {
 	private static void pollInput() {
 		while (frame.poll(event)) {
 			switch (event.type) {
-				case Event.KEY_DOWN: input.keyPressed(event.key); break;
+				case Event.KEY_DOWN:
+					input.keyPressed(event.key);
+					// LAZYVM: lazy.gfx TEXT is printable text only; AWT also typed these two, and
+					// text entry relies on them. KEY_DOWN repeats while held, as AWT's typing did.
+					if (event.key == Key.BACKSPACE) input.keyTyped('\b');
+					if (event.key == Key.ENTER) input.keyTyped('\n');
+					break;
 				case Event.KEY_UP: input.keyReleased(event.key); break;
-				// AWT types Enter as '\n'; the window reports '\r'.
-				case Event.TEXT: input.keyTyped(event.ch == '\r' ? '\n' : event.ch); break;
+				case Event.TEXT: input.keyTyped(event.ch); break;
 				case Event.FOCUS: focused = event.x == 1; break;
 				case Event.CLOSE:
 					Logging.GAMEHANDLER.info("Window closing");

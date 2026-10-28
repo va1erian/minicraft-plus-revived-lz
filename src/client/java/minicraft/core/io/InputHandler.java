@@ -8,12 +8,9 @@ import com.studiohartman.jamepad.ControllerManager;
 import com.studiohartman.jamepad.ControllerUnpluggedException;
 import minicraft.util.Logging;
 import org.jetbrains.annotations.Nullable;
-import org.tinylog.Logger;
+import minicraft.util.Logger; // LAZYVM-GAP: tinylog cannot run on LazyVM.
+import minicraft.util.StreamGap;
 
-import java.awt.Component;
-import java.awt.event.KeyEvent;
-import java.awt.event.KeyListener;
-import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -23,7 +20,7 @@ import java.util.Map.Entry;
 import java.util.Stack;
 import java.util.function.Predicate;
 
-public class InputHandler implements KeyListener {
+public class InputHandler { // LAZYVM: fed by Initializer's lazy.gfx event loop, not an AWT KeyListener.
 	/**
 	 * This class handles key presses; this also implements MouseListener... but I have no idea why.
 	 * It's not used in any way. Ever. As far as I know. Anyway, here are a few tips about this class:
@@ -66,26 +63,14 @@ public class InputHandler implements KeyListener {
 
 	private static HashMap<Integer, String> keyNames = new HashMap<>();
 
+	// LAZYVM: names come from lazy.gfx.Key, whose names already match the AWT VK_ names the game
+	// uses ("UP", "ENTER", "SHIFT", "CTRL", "BACKSPACE", "F3", ...), except for the backslash.
 	static {
-		Field[] keyEventFields = KeyEvent.class.getFields();
-		ArrayList<Field> keyConstants = new ArrayList<>();
-		for (Field field : keyEventFields) {
-			if (field.getName().contains("VK_") && (field.getType().getName().equals(int.class.getName())))
-				keyConstants.add(field);
+		for (int code = 0; code < lazy.gfx.Key.F1 + 12; code++) {
+			String name = lazy.gfx.Key.name(code);
+			if (!name.equals("UNKNOWN")) keyNames.put(code, name);
 		}
-
-		for (Field keyConst : keyConstants) {
-			String name = keyConst.getName();
-			name = name.substring(3); // Removes the "VK_"
-			try {
-				keyNames.put(((Integer) keyConst.get(0)), name);
-			} catch (IllegalAccessException ignored) {
-			}
-		}
-
-		// For compatibility becuase I'm lazy. :P
-		keyNames.put(KeyEvent.VK_BACK_SPACE, "BACKSPACE");
-		keyNames.put(KeyEvent.VK_CONTROL, "CTRL");
+		keyNames.put(lazy.gfx.Key.BACKSLASH, "BACK_SLASH");
 	}
 
 	private HashMap<String, String> keymap; // The symbolic map of actions to physical key names.
@@ -127,11 +112,6 @@ public class InputHandler implements KeyListener {
 			Logging.CONTROLLER.error(e, "Controllers are not support, being disabled.");
 		}
 		controllersSupported = controllerInit;
-	}
-
-	public InputHandler(Component inputSource) {
-		this();
-		inputSource.addKeyListener(this); // Add key listener to game
 	}
 
 	private void initKeyMap() {
@@ -336,12 +316,12 @@ public class InputHandler implements KeyListener {
 
 		@Override
 		public boolean isDown() { // All keys down.
-			return keys.stream().allMatch(Key::isDown);
+			return StreamGap.allMatch(keys, Key::isDown); // LAZYVM-GAP: no streams.
 		}
 
 		@Override
 		public boolean isClicked() { // If the whole key binding is clicked, then the all keys must be down and at least one of these is/are just clicked.
-			return isDown() && keys.stream().anyMatch(Key::isClicked);
+			return isDown() && StreamGap.anyMatch(keys, Key::isClicked); // LAZYVM-GAP: no streams.
 		}
 	}
 
@@ -354,12 +334,12 @@ public class InputHandler implements KeyListener {
 
 		@Override
 		public boolean isDown() {
-			return keys.stream().anyMatch(Key::isDown);
+			return StreamGap.anyMatch(keys, Key::isDown); // LAZYVM-GAP: no streams.
 		}
 
 		@Override
 		public boolean isClicked() {
-			return keys.stream().anyMatch(Key::isClicked);
+			return StreamGap.anyMatch(keys, Key::isClicked); // LAZYVM-GAP: no streams.
 		}
 	}
 
@@ -440,7 +420,7 @@ public class InputHandler implements KeyListener {
 	/// THIS is pretty much the only way you want to be interfacing with this class; it has all the auto-create and protection functions and such built-in.
 	// For mapped keys
 	public Key getMappedKey(String keyText) {
-		keyText = keyText.toUpperCase(java.util.Locale.ENGLISH); // Prevent errors due to improper "casing"
+		keyText = keyText.toUpperCase(); // Prevent errors due to improper "casing" LAZYVM-GAP: no String.toUpperCase(Locale).
 		synchronized ("lock") {
 			// If the passed-in key equals one in keymap, then replace it with its match, a key in keyboard.
 			if (keymap.containsKey(keyText)) // If false, we assume that keytext is a physical key.
@@ -475,7 +455,7 @@ public class InputHandler implements KeyListener {
 		// If the passed-in key is blank, or null, then return null.
 		if (keytext == null || keytext.isEmpty()) return keyMask;
 
-		keytext = keytext.toUpperCase(java.util.Locale.ENGLISH); // Prevent errors due to improper "casing"
+		keytext = keytext.toUpperCase(); // Prevent errors due to improper "casing" LAZYVM-GAP: no String.toUpperCase(Locale).
 
 		if (keytext.contains("|")) {
 			/// Multiple key possibilities exist for this action; so, combine the results of each one!
@@ -638,18 +618,18 @@ public class InputHandler implements KeyListener {
 		overwrite = false;
 	}
 
-	/// Event methods, many to satisfy interface requirements...
-	public void keyPressed(KeyEvent ke) {
-		toggle(ke.getExtendedKeyCode(), true);
+	/// Event methods, called with lazy.gfx.Key codes. LAZYVM: these took AWT KeyEvents.
+	public void keyPressed(int key) {
+		toggle(key, true);
 	}
 
-	public void keyReleased(KeyEvent ke) {
-		toggle(ke.getExtendedKeyCode(), false);
+	public void keyReleased(int key) {
+		toggle(key, false);
 	}
 
-	public void keyTyped(KeyEvent ke) {
+	public void keyTyped(char ch) {
 		// Stores the last character typed
-		keyTypedBuffer = String.valueOf(ke.getKeyChar());
+		keyTypedBuffer = String.valueOf(ch);
 	}
 
 	private static final String control = "[\\p{Print}\n]+"; // Should match only printable characters.
@@ -727,12 +707,12 @@ public class InputHandler implements KeyListener {
 	}
 
 	public boolean inputPressed(String mapping) {
-		mapping = mapping.toUpperCase(java.util.Locale.ENGLISH);
+		mapping = mapping.toUpperCase(); // LAZYVM-GAP: no String.toUpperCase(Locale).
 		return getMappedKey(mapping).isClicked() || (buttonMap.containsKey(mapping) && buttonPressed(buttonMap.get(mapping)));
 	}
 
 	public boolean inputDown(String mapping) {
-		mapping = mapping.toUpperCase(java.util.Locale.ENGLISH);
+		mapping = mapping.toUpperCase(); // LAZYVM-GAP: no String.toUpperCase(Locale).
 		return getMappedKey(mapping).isDown() || (buttonMap.containsKey(mapping) && buttonDown(buttonMap.get(mapping)));
 	}
 

@@ -14,8 +14,6 @@ import minicraft.gfx.Screen;
 import minicraft.gfx.SpriteLinker;
 import org.jetbrains.annotations.Nullable;
 
-import java.awt.Label;
-import java.awt.event.KeyEvent;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
@@ -55,7 +53,7 @@ public class OnScreenKeyboardMenu extends Menu {
 		}
 
 		public void press() {
-			Game.input.keyTyped(new KeyEvent(new Label(), KeyEvent.KEY_TYPED, System.currentTimeMillis(), KeyEvent.VK_UNDEFINED, 0, output));
+			Game.input.keyTyped(output); // LAZYVM: keyTyped takes the char, not an AWT KeyEvent.
 		}
 	}
 

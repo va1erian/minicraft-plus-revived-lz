@@ -19,14 +19,11 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.stream.Collectors;
 
 public class AchievementsDisplay extends Display {
 
@@ -39,10 +36,9 @@ public class AchievementsDisplay extends Display {
 		// Get achievements from a json file stored in resources. Relative to project root.
 		try (InputStream stream = Game.class.getResourceAsStream("/resources/achievements.json")) {
 			if (stream != null) {
-				BufferedReader reader = new BufferedReader(new InputStreamReader(stream));
-
 				// Read lines and combine into a string.
-				String achievementsJson = reader.lines().collect(Collectors.joining("\n"));
+				// LAZYVM-GAP: was BufferedReader.lines() and Collectors.joining; LazyVM has no streams.
+				String achievementsJson = ResourcePackDisplay.readStringFromInputStream(stream);
 
 				// Load json.
 				JSONArray json = new JSONArray(achievementsJson);

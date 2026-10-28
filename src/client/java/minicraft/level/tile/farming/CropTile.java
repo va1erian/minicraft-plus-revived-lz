@@ -14,9 +14,9 @@ import minicraft.level.Level;
 import minicraft.level.tile.Tile;
 import minicraft.level.tile.Tiles;
 import minicraft.level.tile.WaterTile;
+import minicraft.util.StreamGap;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.Arrays;
 import java.util.Random;
 
 public class CropTile extends FarmTile {
@@ -40,7 +40,7 @@ public class CropTile extends FarmTile {
 		int data = level.getData(xt, yt);
 		int moisture = data & 0b111;
 		boolean successful = false;
-		if (Arrays.stream(level.getAreaTiles(xt, yt, 4)).anyMatch(t -> t instanceof WaterTile)) { // Contains water.
+		if (StreamGap.anyMatch(level.getAreaTiles(xt, yt, 4), t -> t instanceof WaterTile)) { // Contains water. LAZYVM-GAP: no streams.
 			if (moisture < 7 && random.nextInt(10) == 0) { // hydrating
 				level.setData(xt, yt, data = (data & ~0b111) + moisture++);
 				successful = true;

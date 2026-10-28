@@ -38,7 +38,7 @@ import minicraft.level.Level;
 import minicraft.level.tile.Tiles;
 import minicraft.screen.LoadingDisplay;
 import minicraft.util.Logging;
-import org.tinylog.Logger;
+import minicraft.util.Logger; // LAZYVM-GAP: tinylog cannot run on LazyVM.
 
 import java.io.BufferedReader;
 import java.io.File;

@@ -26,8 +26,6 @@ import minicraft.util.Quest.QuestSeries;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import java.awt.image.BufferedImage;
-import java.awt.image.DataBufferInt;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.ArrayList;
@@ -307,7 +305,7 @@ public class QuestsDisplay extends Display {
 			private final int rasterY;
 			private final MinicraftImage image;
 			private final int[] rasterPixels;
-			private final Screen simulatedRasterScreen = new Screen(new BufferedImage(Screen.w, Screen.h, BufferedImage.TYPE_INT_RGB)) {
+			private final Screen simulatedRasterScreen = new Screen(new int[Screen.w * Screen.h]) { // LAZYVM: Screen draws into an int[], not a BufferedImage.
 				@Override
 				public void render(int xp, int yp, int xt, int yt, int bits, MinicraftImage sheet, int whiteTint, boolean fullbright, int color) {
 					if (sheet == null) return; // Verifying that sheet is not null.

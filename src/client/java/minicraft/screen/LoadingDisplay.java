@@ -2,6 +2,7 @@ package minicraft.screen;
 
 import minicraft.core.Game;
 import minicraft.core.World;
+import minicraft.core.io.InputHandler;
 import minicraft.core.io.Localization;
 import minicraft.gfx.Color;
 import minicraft.gfx.Ellipsis;
@@ -12,36 +13,42 @@ import minicraft.gfx.FontStyle;
 import minicraft.gfx.Screen;
 import minicraft.saveload.Save;
 
-import javax.swing.Timer;
-
 public class LoadingDisplay extends Display {
 
 	private static float percentage = 0;
 	private static String progressType = "";
 	private static boolean localizeProgressType = true;
 
-	private final Timer t;
+	// LAZYVM-GAP: upstream started a Swing Timer here whose action ran World.initWorld() on a new
+	// "World Initialization Thread". LazyVM has neither javax.swing nor Thread.start(), so tick()
+	// builds the world on the game thread once the screen has shown for the same 500 ms. The
+	// screen then stands still until the world is ready.
+	private long initTime;
 	private final Ellipsis ellipsis = new SmoothEllipsis(new TimeUpdater());
 
 	private String msg = "";
 
 	public LoadingDisplay() {
 		super(true, false);
-		t = new Timer(500, e -> new Thread(() -> { // A new thread is required as this blocks the running thread.
-			try {
-				World.initWorld();
-				Game.setDisplay(null);
-			} catch (RuntimeException ex) {
-				Throwable t = ex.getCause();
-				if (t instanceof InterruptedException) {
-					World.onWorldExits();
-					Game.exitDisplay(); // Exits the loading display and returns to world select display.
-					Game.setDisplay(new PopupDisplay(null, "minicraft.displays.loading.regeneration_cancellation_popup.display"));
-				} else
-					throw ex;
-			}
-		}, "World Initialization Thread").start());
-		t.setRepeats(false);
+	}
+
+	@Override
+	public void tick(InputHandler input) {
+		super.tick(input);
+		if (initTime == 0 || System.currentTimeMillis() - initTime < 500) return;
+		initTime = 0; // LAZYVM: runs once per init(), as the non-repeating Timer did.
+		try {
+			World.initWorld();
+			Game.setDisplay(null);
+		} catch (RuntimeException ex) {
+			Throwable t = ex.getCause();
+			if (t instanceof InterruptedException) {
+				World.onWorldExits();
+				Game.exitDisplay(); // Exits the loading display and returns to world select display.
+				Game.setDisplay(new PopupDisplay(null, "minicraft.displays.loading.regeneration_cancellation_popup.display"));
+			} else
+				throw ex;
+		}
 	}
 
 	@Override
@@ -55,7 +62,7 @@ public class LoadingDisplay extends Display {
 			msg = "minicraft.displays.loading.message.loading";
 		else
 			msg = "minicraft.displays.loading.message.generating";
-		t.start();
+		initTime = System.currentTimeMillis(); // LAZYVM: was t.start().
 	}
 
 	@Override

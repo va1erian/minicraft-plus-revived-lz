@@ -70,7 +70,7 @@ public class Quest extends AdvancementElement {
 
 		@Override
 		protected boolean checkIsCompleted() {
-			return quests.values().stream().allMatch(quest -> quest.completed) && super.checkIsCompleted();
+			return StreamGap.allMatch(quests.values(), quest -> quest.completed) && super.checkIsCompleted(); // LAZYVM-GAP: no streams.
 		}
 
 		@Override

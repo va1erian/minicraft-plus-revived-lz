@@ -14,8 +14,8 @@ import minicraft.level.tile.Tile;
 import minicraft.level.tile.Tiles;
 import minicraft.level.tile.WaterTile;
 import minicraft.util.AdvancementElement;
+import minicraft.util.StreamGap;
 
-import java.util.Arrays;
 
 public class FarmTile extends Tile {
 	private static final SpriteAnimation sprite = new SpriteAnimation(SpriteType.Tile, "farmland");
@@ -51,7 +51,7 @@ public class FarmTile extends Tile {
 	@Override
 	public boolean tick(Level level, int xt, int yt) {
 		int moisture = level.getData(xt, yt) & 0b111;
-		if (Arrays.stream(level.getAreaTiles(xt, yt, 4)).anyMatch(t -> t instanceof WaterTile)) { // Contains water.
+		if (StreamGap.anyMatch(level.getAreaTiles(xt, yt, 4), t -> t instanceof WaterTile)) { // Contains water. LAZYVM-GAP: no streams.
 			if (moisture < 7 && random.nextInt(10) == 0) { // hydrating
 				level.setData(xt, yt, moisture + 1);
 				return true;

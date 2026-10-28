@@ -22,7 +22,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Locale;
 
 public class Menu {
 
@@ -244,8 +243,8 @@ public class Menu {
 					for (int i = 0; entryIt.hasNext(); i++) {
 						ListEntry entry = entryIt.next();
 
-						String stringEntry = entry.toString().toLowerCase(Locale.ENGLISH);
-						String typingString = typingSearcher.toLowerCase(Locale.ENGLISH);
+						String stringEntry = entry.toString().toLowerCase(); // LAZYVM-GAP: no String.toLowerCase(Locale).
+						String typingString = typingSearcher.toLowerCase(); // LAZYVM-GAP: no String.toLowerCase(Locale).
 
 						if (stringEntry.contains(typingString)) {
 							if (shouldSelect) {

@@ -32,7 +32,9 @@ public class Network extends Game {
 	}
 
 	public static void findLatestVersion(Action callback) {
-		new Thread(() -> {
+		// LAZYVM-GAP: no Thread.start(), so the check runs inline; without a network (see the
+		// kong.unirest stand-in) it fails at once and reports the current version.
+		((Runnable) () -> {
 			Logging.NETWORK.debug("Fetching release list from GitHub..."); // Fetch the latest version from GitHub
 			try {
 				HttpResponse<JsonNode> response = Unirest.get("https://api.github.com/repositories/83168941/releases").asJson();
@@ -62,7 +64,7 @@ public class Network extends Game {
 			}
 
 			callback.act(); // finished.
-		}).start();
+		}).run();
 	}
 
 	@Nullable

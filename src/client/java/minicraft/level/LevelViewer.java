@@ -1,16 +1,45 @@
 package minicraft.level;
 
+import lazy.gfx.Event;
+import lazy.gfx.Key;
+import lazy.gfx.Window;
 import minicraft.core.Game;
 import minicraft.level.tile.Tiles;
 
-import javax.swing.ImageIcon;
-import javax.swing.JOptionPane;
-
-import java.awt.Image;
-import java.awt.image.BufferedImage;
 import java.util.Random;
 
 public class LevelViewer {
+	private static Window mapWindow;
+
+	/**
+	 * LAZYVM: shows a map in a lazy.gfx window and waits for a choice; this replaces the
+	 * JOptionPane that showed the map with one button per option. Keys 1 to 9 pick an option,
+	 * Enter the first one.
+	 * @return the option's index, or -1 once the window is closed (or Escape is pressed).
+	 */
+	static int showMap(String title, int[] pixels, int w, int h, int scale, String[] options) {
+		if (mapWindow == null) mapWindow = Window.open(title, w, h, scale);
+		StringBuilder keys = new StringBuilder(title);
+		for (int i = 0; i < options.length; i++) keys.append(i == 0 ? " | " : ", ").append(i + 1).append(": ").append(options[i]);
+		mapWindow.setTitle(keys.toString());
+		Event e = new Event();
+		while (mapWindow.isOpen()) {
+			mapWindow.present(pixels, w, h);
+			while (mapWindow.poll(e)) {
+				if (e.type == Event.CLOSE || e.type == Event.KEY_DOWN && e.key == Key.ESCAPE) {
+					mapWindow.close();
+					return -1;
+				}
+				if (e.type == Event.KEY_DOWN && e.key == Key.ENTER) return 0;
+				if (e.type == Event.KEY_DOWN && e.key >= '1' && e.key < '1' + options.length) return e.key - '1';
+			}
+			try {
+				Thread.sleep(16);
+			} catch (InterruptedException ignored) {
+			}
+		}
+		return -1;
+	}
 
 	public static void main(String[] args) {
 		long worldSeed = 0x100;
@@ -60,7 +89,6 @@ public class LevelViewer {
 
 			if (map == null) continue;
 
-			BufferedImage img = new BufferedImage(w, h, BufferedImage.TYPE_INT_RGB);
 			int[] pixels = new int[w * h];
 			for (int y = 0; y < h; y++) {
 				for (int x = 0; x < w; x++) {
@@ -96,10 +124,9 @@ public class LevelViewer {
 					if (map.getTile(x, y) == Tiles.get("ashed dirt")) pixels[i] = 0x303030;
 				}
 			}
-			img.setRGB(0, 0, w, h, pixels, 0, w);
-			int op = JOptionPane.showOptionDialog(null, null, "LevelViewer " + Game.VERSION + " | Seed: " + worldSeed + " | Level: " + lvl, JOptionPane.DEFAULT_OPTION, JOptionPane.PLAIN_MESSAGE,
-				new ImageIcon(img.getScaledInstance(w * 4, h * 4, Image.SCALE_AREA_AVERAGING)),
-				new String[] { "Next Seed", "Prev Seed", "Next Level", "Prev Level", "Min (0x100)", "Max (0xAAFF20)", "Random Seed", "Close" }, "Next");
+			int op = showMap("LevelViewer " + Game.VERSION + " | Seed: " + worldSeed + " | Level: " + lvl, pixels, w, h, 4,
+				new String[] { "Next Seed", "Prev Seed", "Next Level", "Prev Level", "Min (0x100)", "Max (0xAAFF20)", "Random Seed", "Close" });
+			if (op < 0) return; // LAZYVM: the window is gone; JOptionPane would have opened a new one.
 			if (op == 0) worldSeed++;
 			else if (op == 1) worldSeed--;
 			else if (op == 2) {

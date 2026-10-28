@@ -1,24 +1,12 @@
 package minicraft.core;
 
+import lazy.gfx.Event;
+import lazy.gfx.Window;
 import minicraft.core.io.FileHandler;
+import minicraft.core.io.KeyScript;
 import minicraft.core.io.Localization;
 import minicraft.util.Logging;
-import minicraft.util.TinylogLoggingProvider;
 import org.jetbrains.annotations.Nullable;
-import org.tinylog.provider.ProviderRegistry;
-
-import javax.imageio.ImageIO;
-import javax.swing.JFrame;
-import javax.swing.WindowConstants;
-
-import java.awt.BorderLayout;
-import java.awt.Color;
-import java.awt.event.ComponentAdapter;
-import java.awt.event.ComponentEvent;
-import java.awt.event.WindowEvent;
-import java.awt.event.WindowListener;
-import java.awt.image.BufferedImage;
-import java.io.IOException;
 
 public class Initializer extends Game {
 	private Initializer() {
@@ -26,12 +14,25 @@ public class Initializer extends Game {
 
 	/**
 	 * Reference to actual frame, also it may be null.
+	 * LAZYVM: a lazy.gfx window replaces the Swing JFrame and its canvas.
 	 */
-	static JFrame frame;
+	static Window frame;
 	static int fra, tik; // These store the number of frames and ticks in the previous second; used for fps, at least.
 
-	public static JFrame getFrame() {
+	// LAZYVM: input is polled from the window each loop instead of arriving on AWT's event thread.
+	private static final Event event = new Event();
+	private static boolean focused = true;
+	// LAZYVM: debug aids for running without a keyboard: scripted input and an fps/tps log.
+	private static final KeyScript keyScript = KeyScript.fromProperty("minicraft.lazyvm.keys");
+	private static final boolean logStats = "true".equals(System.getProperty("minicraft.lazyvm.stats")); // LAZYVM-GAP: no Boolean.getBoolean.
+
+	public static Window getFrame() {
 		return frame;
+	}
+
+	/** LAZYVM: replaces Canvas.hasFocus(); true unless the window reported losing the focus. */
+	static boolean hasFocus() {
+		return focused;
 	}
 
 	public static int getCurFps() {
@@ -65,7 +66,7 @@ public class Initializer extends Game {
 				Localization.unlocalizedStringTracing = true;
 			}
 		}
-		((TinylogLoggingProvider) ProviderRegistry.getLoggingProvider()).init();
+		// LAZYVM-GAP: tinylog cannot run on LazyVM; minicraft.util.TaggedLogger reads the flags.
 
 		FileHandler.determineGameDir(saveDir);
 	}
@@ -85,13 +86,18 @@ public class Initializer extends Game {
 		long lastTimer1 = System.currentTimeMillis();
 
 		while (running) {
+			pollInput(); // LAZYVM: see pollInput().
 			long now = System.nanoTime();
 			double nsPerTick = 1E9D / Updater.normSpeed; // Nanosecs per sec divided by ticks per sec = nanosecs per tick
 			if (currentDisplay == null) nsPerTick /= Updater.gamespeed;
 			unprocessed += (now - lastTick) / nsPerTick; // Figures out the unprocessed time between now and lastTick.
 			lastTick = now;
+			// LAZYVM: the world is now built inside a tick (no threads), which takes seconds; drop
+			// such a backlog instead of replaying it as a burst of game ticks.
+			if (unprocessed > Updater.normSpeed) unprocessed = 1;
 			while (unprocessed >= 1) { // If there is unprocessed time, then tick.
 				ticks++;
+				if (keyScript != null) keyScript.tick(input, frame); // LAZYVM: debug-only scripted input.
 				Updater.tick(); // Calls the tick method (in which it calls the other tick methods throughout the code.
 				unprocessed--;
 			}
@@ -121,6 +127,7 @@ public class Initializer extends Game {
 
 				fra = (int) Math.round(frames * 1000D / interval); // Saves total frames in last second
 				tik = (int) Math.round(ticks * 1000D / interval); // Saves total ticks in last second
+				if (logStats) System.out.println("[LAZYVM] " + fra + " fps, " + tik + " tps"); // LAZYVM: measurements.
 				frames = 0; // Resets frames
 				ticks = 0; // Resets ticks; ie, frames and ticks only are per second
 			}
@@ -128,68 +135,39 @@ public class Initializer extends Game {
 	}
 
 
-	// Creates and displays the JFrame window that the game appears in.
-	static void createAndDisplayFrame() {
-		Renderer.canvas.setMinimumSize(new java.awt.Dimension(1, 1));
-		Renderer.canvas.setPreferredSize(Renderer.getWindowSize());
-		Renderer.canvas.setBackground(Color.BLACK);
-		JFrame frame = Initializer.frame = new JFrame(NAME);
-		frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
-		frame.setLayout(new BorderLayout()); // Sets the layout of the window
-		frame.add(Renderer.canvas, BorderLayout.CENTER); // Adds the game (which is a canvas) to the center of the screen.
-		frame.pack(); // Squishes everything into the preferredSize.
-
-		try {
-			BufferedImage logo = ImageIO.read(Game.class.getResourceAsStream("/resources/logo.png")); // Load the window logo
-			frame.setIconImage(logo);
-		} catch (IOException e) {
-			CrashHandler.errorHandle(e);
+	/**
+	 * LAZYVM: drains the window's input events into the game: keys and typed text to the
+	 * InputHandler (AWT used to call it from its listeners), focus changes to {@link #hasFocus()},
+	 * and a close request to the game's quit path (formerly the JFrame's windowClosing).
+	 */
+	private static void pollInput() {
+		while (frame.poll(event)) {
+			switch (event.type) {
+				case Event.KEY_DOWN: input.keyPressed(event.key); break;
+				case Event.KEY_UP: input.keyReleased(event.key); break;
+				// AWT types Enter as '\n'; the window reports '\r'.
+				case Event.TEXT: input.keyTyped(event.ch == '\r' ? '\n' : event.ch); break;
+				case Event.FOCUS: focused = event.x == 1; break;
+				case Event.CLOSE:
+					Logging.GAMEHANDLER.info("Window closing");
+					quit();
+					break;
+			}
 		}
+	}
 
-		frame.setLocationRelativeTo(null); // The window will pop up in the middle of the screen when launched.
-
-		frame.addComponentListener(new ComponentAdapter() {
-			public void componentResized(ComponentEvent e) {
-				float w = frame.getWidth() - frame.getInsets().left - frame.getInsets().right;
-				float h = frame.getHeight() - frame.getInsets().top - frame.getInsets().bottom;
-				Renderer.SCALE = Math.min(w / Renderer.WIDTH, h / Renderer.HEIGHT);
-			}
-		});
-
-		frame.addWindowListener(new WindowListener() {
-			public void windowActivated(WindowEvent e) {
-			}
-
-			public void windowDeactivated(WindowEvent e) {
-			}
-
-			public void windowIconified(WindowEvent e) {
-			}
-
-			public void windowDeiconified(WindowEvent e) {
-			}
-
-			public void windowOpened(WindowEvent e) {
-			}
-
-			public void windowClosed(WindowEvent e) {
-				Logging.GAMEHANDLER.debug("Window closed");
-			}
-
-			public void windowClosing(WindowEvent e) {
-				Logging.GAMEHANDLER.info("Window closing");
-				quit();
-			}
-		});
+	// Creates and displays the window that the game appears in.
+	// LAZYVM: lazy.gfx scales and letterboxes the frame itself, so the resize listener that kept
+	// Renderer.SCALE up to date is gone, and the window has no icon (lazy.gfx has no icon API).
+	static void createAndDisplayFrame() {
+		frame = Window.open(NAME, Renderer.WIDTH, Renderer.HEIGHT, (int) Renderer.SCALE);
 	}
 
 	/**
 	 * Launching the main window.
+	 * LAZYVM: nothing to do; Window.open shows the window, and it has the focus.
 	 */
 	static void launchWindow() {
-		frame.setVisible(true);
-		frame.requestFocus();
-		Renderer.canvas.requestFocus();
 	}
 
 	/**

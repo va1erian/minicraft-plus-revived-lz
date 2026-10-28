@@ -17,7 +17,7 @@ import minicraft.screen.WorldSelectDisplay;
 import minicraft.util.AdvancementElement;
 import minicraft.util.Logging;
 import org.jetbrains.annotations.Nullable;
-import org.tinylog.Logger;
+import minicraft.util.Logger; // LAZYVM-GAP: tinylog cannot run on LazyVM.
 
 import java.util.Random;
 

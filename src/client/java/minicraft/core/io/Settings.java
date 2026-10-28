@@ -4,9 +4,6 @@ import minicraft.screen.entry.ArrayEntry;
 import minicraft.screen.entry.BooleanEntry;
 import minicraft.screen.entry.RangeEntry;
 
-import java.awt.DisplayMode;
-import java.awt.GraphicsEnvironment;
-import java.awt.HeadlessException;
 import java.util.HashMap;
 
 public final class Settings {
@@ -93,15 +90,6 @@ public final class Settings {
 	 * @return The refresh rate if successful. 60 if not.
 	 */
 	private static int getDefaultRefreshRate() {
-		int hz;
-		try {
-			hz = GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice().getDisplayMode().getRefreshRate();
-		} catch (HeadlessException e) {
-			return 60;
-		}
-
-		if (hz == DisplayMode.REFRESH_RATE_UNKNOWN) return 60;
-		if (hz > 300 || 10 >= hz) return 60;
-		return hz;
+		return 60; // LAZYVM: lazy.gfx does not report the display's refresh rate.
 	}
 }

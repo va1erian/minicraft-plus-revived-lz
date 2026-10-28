@@ -18,8 +18,6 @@ import minicraft.screen.WorldSelectDisplay;
 import minicraft.util.AdvancementElement;
 import minicraft.util.Logging;
 
-import java.awt.GraphicsDevice;
-
 public class Updater extends Game {
 	private Updater() {
 	}
@@ -71,22 +69,8 @@ public class Updater extends Game {
 	}
 
 	static void updateFullscreen() {
-		// Dispose is needed to set undecorated value
-		Initializer.frame.dispose();
-
-		GraphicsDevice device = Initializer.frame.getGraphicsConfiguration().getDevice();
-		if (Updater.FULLSCREEN) {
-			Initializer.frame.setUndecorated(true);
-			device.setFullScreenWindow(Initializer.frame);
-		} else {
-			Initializer.frame.setUndecorated(false);
-			device.setFullScreenWindow(null);
-		}
-
-		// Show frame again
-		Initializer.frame.setVisible(true);
-		// When fullscreen is enabled, focus is lost
-		Renderer.canvas.requestFocus();
+		// LAZYVM: lazy.gfx has no fullscreen mode yet; the window stays as it is.
+		Logging.GAMEHANDLER.warn("Fullscreen is not supported on LazyVM yet.");
 	}
 
 	// VERY IMPORTANT METHOD!! Makes everything keep happening.
@@ -175,10 +159,10 @@ public class Updater extends Game {
 		Sound.tick();
 
 		// This is the general action statement thing! Regulates menus, mostly.
-		if (!Renderer.canvas.hasFocus()) {
+		if (!Initializer.hasFocus()) { // LAZYVM: was Renderer.canvas.hasFocus(), here and below.
 			input.releaseAll();
 		}
-		if (Renderer.canvas.hasFocus()) {
+		if (Initializer.hasFocus()) {
 			gameTime++;
 
 			input.tick(); // INPUT TICK; no other class should call this, I think...especially the *Menu classes.

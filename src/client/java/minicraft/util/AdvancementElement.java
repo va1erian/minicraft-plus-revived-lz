@@ -18,7 +18,6 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.IOException;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -28,9 +27,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 /**
  * World-wide.
@@ -141,8 +137,8 @@ public class AdvancementElement {
 	public static void loadRecipeUnlockingElements(JSONObject json) {
 		resetRecipeUnlockingElements();
 		for (String k : json.keySet()) {
-			recipeUnlockingElements.stream().filter(e -> e.key.equals(k))
-				.findFirst().ifPresent(element -> element.load(json.getJSONObject(k)));
+			AdvancementElement element = StreamGap.first(recipeUnlockingElements, e -> e.key.equals(k)); // LAZYVM-GAP: no streams.
+			if (element != null) element.load(json.getJSONObject(k));
 		}
 	}
 
@@ -185,7 +181,8 @@ public class AdvancementElement {
 		protected final AdvancementTrigger.AdvancementTriggerConditionHandler.AdvancementCriterionConditions conditions;
 		protected AdvancementElement element = null;
 		// #completionTime field here is used for statistics and debugging.
-		protected @Nullable LocalDateTime completionTime = null; // null if not completed.
+		// LAZYVM-GAP: kept as its ISO text (see Clock), since LazyVM has no java.time.LocalDateTime.
+		protected @Nullable String completionTime = null; // null if not completed.
 
 		public ElementCriterion(String trigger, JSONObject conditions) {
 			this.trigger = AdvancementTrigger.getTrigger(trigger);
@@ -202,7 +199,7 @@ public class AdvancementElement {
 		}
 
 		@SuppressWarnings("unused")
-		public @Nullable LocalDateTime getCompletionTime() {
+		public @Nullable String getCompletionTime() {
 			return completionTime;
 		}
 
@@ -211,10 +208,10 @@ public class AdvancementElement {
 		 * @param inLoad If this is {@code false}, triggers the status updater.
 		 * @param completionTime The completion time. Using the current datetime if this is {@code null}.
 		 */
-		public void markAsCompleted(boolean inLoad, @Nullable LocalDateTime completionTime) {
+		public void markAsCompleted(boolean inLoad, @Nullable String completionTime) {
 			if (this.completionTime == null) {
 				trigger.registeredCriteria.remove(this);
-				this.completionTime = completionTime == null ? LocalDateTime.now() : completionTime;
+				this.completionTime = completionTime == null ? Clock.isoNow() : completionTime;
 				if (!inLoad && element != null)
 					element.update();
 			}
@@ -301,7 +298,7 @@ public class AdvancementElement {
 	}
 
 	public int getNumCriteriaCompleted() {
-		return (int) criteria.values().stream().filter(ElementCriterion::isCompleted).count();
+		return StreamGap.count(criteria.values(), ElementCriterion::isCompleted); // LAZYVM-GAP: no streams.
 	}
 
 	public int getTotalNumCriteria() {
@@ -314,16 +311,17 @@ public class AdvancementElement {
 
 	protected boolean isUnlockable() {
 		if (unlocked) return true;
-		return unlockingRequirements.isEmpty() && unlockingCriteria.values().stream().allMatch(criterion -> criterion.completionTime != null) ||
-			!unlockingRequirements.isEmpty() && unlockingRequirements.stream().allMatch(sublist -> sublist.stream().anyMatch(k -> {
+		// LAZYVM-GAP: no streams; here and in checkIsCompleted, StreamGap does the matching.
+		return unlockingRequirements.isEmpty() && StreamGap.allMatch(unlockingCriteria.values(), criterion -> criterion.completionTime != null) ||
+			!unlockingRequirements.isEmpty() && StreamGap.allMatch(unlockingRequirements, sublist -> StreamGap.anyMatch(sublist, k -> {
 				ElementCriterion criterion = criteria.get(k);
 				return criterion != null && criterion.completionTime != null;
 			}));
 	}
 
 	protected boolean checkIsCompleted() {
-		return requirements.isEmpty() && criteria.values().stream().allMatch(criterion -> criterion.completionTime != null) ||
-			!requirements.isEmpty() && requirements.stream().allMatch(sublist -> sublist.stream().anyMatch(k -> {
+		return requirements.isEmpty() && StreamGap.allMatch(criteria.values(), criterion -> criterion.completionTime != null) ||
+			!requirements.isEmpty() && StreamGap.allMatch(requirements, sublist -> StreamGap.anyMatch(sublist, k -> {
 				ElementCriterion criterion = criteria.get(k);
 				return criterion != null && criterion.completionTime != null;
 			}));
@@ -389,7 +387,7 @@ public class AdvancementElement {
 			for (String k : criteriaJson.keySet()) {
 				ElementCriterion criterion = criteria.get(k);
 				if (criterion != null) {
-					criterion.markAsCompleted(true, LocalDateTime.parse(criteriaJson.getString(k)));
+					criterion.markAsCompleted(true, criteriaJson.getString(k)); // LAZYVM-GAP: was LocalDateTime.parse.
 				}
 			}
 		}
@@ -399,7 +397,7 @@ public class AdvancementElement {
 			for (String k : unlockingCriteriaJson.keySet()) {
 				ElementCriterion criterion = unlockingCriteria.get(k);
 				if (criterion != null) {
-					criterion.markAsCompleted(true, LocalDateTime.parse(unlockingCriteriaJson.getString(k)));
+					criterion.markAsCompleted(true, unlockingCriteriaJson.getString(k)); // LAZYVM-GAP: was LocalDateTime.parse.
 				}
 			}
 		}
@@ -438,17 +436,17 @@ public class AdvancementElement {
 
 	public static abstract class AdvancementTrigger {
 		// Used for threaded trigger handling.
-		private static final Set<ElementCriterion> pendingCompletedCriteria = ConcurrentHashMap.newKeySet();
+		// LAZYVM-GAP: LazyVM has no java.util.concurrent and no threads, so triggers run on the
+		// game thread (see trigger) and a plain set does; tick() drains a copy of it, since
+		// marking one criterion may queue another.
+		private static final Set<ElementCriterion> pendingCompletedCriteria = new HashSet<>();
 
 		public static void tick() {
-			for (Iterator<ElementCriterion> it = pendingCompletedCriteria.iterator(); it.hasNext(); ) {
-				ElementCriterion criterion = it.next();
+			for (ElementCriterion criterion : new ArrayList<>(pendingCompletedCriteria)) {
+				pendingCompletedCriteria.remove(criterion); // Action done.
 				criterion.markAsCompleted(false, null);
-				it.remove(); // Action done.
 			}
 		}
-
-		private static final ExecutorService executorService = Executors.newCachedThreadPool();
 
 		protected final AdvancementTriggerConditionHandler conditions;
 
@@ -496,8 +494,7 @@ public class AdvancementElement {
 		 * Triggering and checking passes by another thread.
 		 */
 		public void trigger(AdvancementTriggerConditionHandler.AdvancementTriggerConditions conditions) {
-			if (!singleThreadNeeded()) executorService.submit(() -> trigger0(conditions));
-			else trigger0(conditions);
+			trigger0(conditions); // LAZYVM-GAP: was submitted to a thread pool unless singleThreadNeeded().
 		}
 
 		@SuppressWarnings("unused")
@@ -609,7 +606,7 @@ public class AdvancementElement {
 						if (!Rangeable.isAbsent(durability) && item instanceof ToolItem)
 							if (!durability.inRange(((ToolItem) item).dur))
 								return false;
-						return items.isEmpty() || items.stream().anyMatch(s -> s.equalsIgnoreCase(item.getName()));
+						return items.isEmpty() || StreamGap.anyMatch(items, s -> s.equalsIgnoreCase(item.getName())); // LAZYVM-GAP: no streams.
 					}
 				}
 
@@ -691,7 +688,7 @@ public class AdvancementElement {
 						if (!Rangeable.isAbsent(this.y))
 							if (!this.y.inRange((double) y))
 								return false;
-						return tiles.isEmpty() || tiles.stream().anyMatch(s -> s.equalsIgnoreCase(tile.name));
+						return tiles.isEmpty() || StreamGap.anyMatch(tiles, s -> s.equalsIgnoreCase(tile.name)); // LAZYVM-GAP: no streams.
 					}
 				}
 			}
@@ -747,8 +744,8 @@ public class AdvancementElement {
 								if (!criterionConditions.slotsEmpty.inRange(maxSlots - items.size()))
 									continue;
 							if (!AdvancementTriggerConditionHandler.AdvancementCriterionConditions.Rangeable.isAbsent(criterionConditions.slotsFull))
-								if (!criterionConditions.slotsFull.inRange((int) items.stream().filter(i ->
-									!(i instanceof StackableItem) || ((StackableItem) i).count >= ((StackableItem) i).maxCount).count()))
+								if (!criterionConditions.slotsFull.inRange(StreamGap.count(items, i -> // LAZYVM-GAP: no streams.
+									!(i instanceof StackableItem) || ((StackableItem) i).count >= ((StackableItem) i).maxCount)))
 									continue;
 							if (!AdvancementTriggerConditionHandler.AdvancementCriterionConditions.Rangeable.isAbsent(criterionConditions.slotsOccupied))
 								if (!criterionConditions.slotsOccupied.inRange(items.size()))

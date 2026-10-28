@@ -70,6 +70,7 @@ import minicraft.screen.entry.ListEntry;
 import minicraft.screen.entry.StringEntry;
 import minicraft.util.AdvancementElement;
 import minicraft.util.Logging;
+import minicraft.util.StreamGap;
 import org.jetbrains.annotations.Nullable;
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -551,7 +552,7 @@ public class Load {
 		}
 
 		String str = input.substring(lastIdx).trim();
-		if (!str.isEmpty() && !str.chars().allMatch(Character::isWhitespace) &&
+		if (!str.isEmpty() && !StreamGap.allWhitespace(str) && // LAZYVM-GAP: was str.chars().allMatch(Character::isWhitespace).
 			!(str.length() == 1 && str.charAt(0) == commaChar)) {
 			out.add(str);
 		}

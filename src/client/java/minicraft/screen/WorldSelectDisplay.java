@@ -17,6 +17,7 @@ import minicraft.screen.entry.ListEntry;
 import minicraft.screen.entry.SelectEntry;
 import minicraft.screen.entry.StringEntry;
 import minicraft.util.Logging;
+import minicraft.util.StreamGap;
 
 import java.io.File;
 import java.io.IOException;
@@ -278,7 +279,7 @@ public class WorldSelectDisplay extends Display {
 				File folder2 = new File(path);
 				folder2.mkdirs();
 				String[] files = folder2.list();
-				if (files != null && files.length > 0 && Arrays.stream(files).anyMatch(f -> f.endsWith(Save.extension))) {
+				if (files != null && files.length > 0 && StreamGap.anyMatch(files, f -> f.endsWith(Save.extension))) {
 					String name = file.getName();
 					worldNames.add(name);
 					worldVersions.add(new Load(name, false).getWorldVersion());

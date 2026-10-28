@@ -1,5 +1,6 @@
 package minicraft.screen;
 
+import lazy.gfx.Image;
 import minicraft.core.CrashHandler;
 import minicraft.core.Game;
 import minicraft.core.Renderer;
@@ -24,9 +25,6 @@ import org.jetbrains.annotations.NotNull;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import javax.imageio.ImageIO;
-
-import java.awt.image.BufferedImage;
 import java.io.BufferedInputStream;
 import java.io.BufferedReader;
 import java.io.Closeable;
@@ -35,9 +33,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.UncheckedIOException;
-import java.net.MalformedURLException;
-import java.net.URISyntaxException;
-import java.net.URL;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
@@ -52,10 +48,11 @@ import java.util.Enumeration;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
-import java.util.stream.Stream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
+// LAZYVM-GAP: LazyVM has no java.net.URL, so packs are identified by their java.net.URI (which
+// upstream converted to and from URLs); images are decoded by lazy.gfx.Image, not ImageIO.
 public class ResourcePackDisplay extends Display {
 	/* Resource Pack
 	 * Current complete structure of resource packs:
@@ -110,23 +107,17 @@ public class ResourcePackDisplay extends Display {
 
 	static { // Initializing the default pack and logo.
 		Path defaultPackPath = FileHandler.getJarResourcesPath();
-		URL defaultPackURL;
-		try {
-			defaultPackURL = defaultPackPath.toUri().toURL();
-		} catch (MalformedURLException e) {
-			CrashHandler.crashHandle(e);
-			throw new RuntimeException(e);
-		}
+		URI defaultPackURL = defaultPackPath.toUri();
 
 		// Default resources
 		try {
 			defaultPack = Objects.requireNonNull(
-				loadPackFromStream(defaultPackURL, defaultPackPath.resolve("pack.json").toUri().toURL().openStream(), "Default")
+				loadPackFromStream(defaultPackURL, Files.newInputStream(defaultPackPath.resolve("pack.json")), "Default")
 			);
 			defaultPack.enable();
 			defaultPack.lock();
 			resourcePacks.add(defaultPack);
-			defaultLogo = MinicraftImage.createDefaultCompatible(ImageIO.read(Objects.requireNonNull(ResourcePackDisplay.class.getResourceAsStream("/resources/default_pack.png"))));
+			defaultLogo = MinicraftImage.createDefaultCompatible(Image.decode(Objects.requireNonNull(ResourcePackDisplay.class.getResourceAsStream("/resources/default_pack.png"))));
 		} catch (IOException e) {
 			CrashHandler.crashHandle(e);
 			throw new UncheckedIOException(e);
@@ -159,7 +150,9 @@ public class ResourcePackDisplay extends Display {
 		if (menus[1].getBounds().getLeft() - menus[0].getBounds().getRight() < padding)
 			menus[1].translate(menus[0].getBounds().getRight() - menus[1].getBounds().getLeft() + padding, 0);
 
-		fileWatcher = new WatcherThread();
+		// LAZYVM-GAP: no hot reloading; the watcher needs Thread.start() and a WatchService,
+		// neither of which LazyVM has.
+		fileWatcher = null;
 	}
 
 	@Override
@@ -244,7 +237,7 @@ public class ResourcePackDisplay extends Display {
 		public void run() {
 			while (running == this) {
 				try {
-					ArrayList<URL> urls = new ArrayList<>();
+					ArrayList<URI> urls = new ArrayList<>();
 					for (WatchEvent<?> event : watcher.take().pollEvents()) {
 						if (event.kind() == StandardWatchEventKinds.OVERFLOW)
 							continue;
@@ -253,12 +246,7 @@ public class ResourcePackDisplay extends Display {
 						WatchEvent<Path> ev = (WatchEvent<Path>) event;
 						Path filename = ev.context();
 
-						try {
-							urls.add(FOLDER_LOCATION.toPath().resolve(filename).toFile().toURI().toURL());
-						} catch (IOException e) {
-							e.printStackTrace();
-							continue;
-						}
+						urls.add(FOLDER_LOCATION.toPath().resolve(filename).toUri());
 					}
 
 					if (urls.size() > 0) {
@@ -284,7 +272,7 @@ public class ResourcePackDisplay extends Display {
 	@Override
 	public void onExit() {
 		releaseUnloadedPacks();
-		fileWatcher.close(); // Removes watcher.
+		if (fileWatcher != null) fileWatcher.close(); // Removes watcher. LAZYVM: there is none.
 		new Save();
 		if (changed) reloadResources();
 	}
@@ -362,7 +350,7 @@ public class ResourcePackDisplay extends Display {
 	 * The object representation of resource pack.
 	 */
 	private static class ResourcePack implements Closeable {
-		private URL packRoot;
+		private URI packRoot;
 		private Path packRootPath;
 
 		/**
@@ -381,14 +369,10 @@ public class ResourcePackDisplay extends Display {
 
 		private boolean isZip;
 
-		private ResourcePack(URL packRoot, int packFormat, String name, String desc) throws IOException {
+		private ResourcePack(URI packRoot, int packFormat, String name, String desc) throws IOException {
 			this.packRoot = packRoot;
-			try {
-				this.packRootPath = Paths.get(packRoot.toURI());
-			} catch (URISyntaxException e) {
-				throw new IOException(e);
-			}
-			this.isZip = packRoot.getFile().endsWith(".zip");
+			this.packRootPath = Paths.get(packRoot);
+			this.isZip = packRoot.getPath().endsWith(".zip");
 			this.packFormat = packFormat;
 			this.name = name;
 			this.description = desc;
@@ -404,7 +388,7 @@ public class ResourcePackDisplay extends Display {
 				openStream();
 				InputStream in = getResourceAsStream("pack.png");
 				if (in != null) {
-					logo = MinicraftImage.createDefaultCompatible(ImageIO.read(in));
+					logo = MinicraftImage.createDefaultCompatible(Image.decode(in));
 
 					// Logo size verification.
 					int h = logo.height;
@@ -423,7 +407,7 @@ public class ResourcePackDisplay extends Display {
 				Logging.RESOURCEHANDLER_RESOURCEPACK.warn(e, "Unable to load logo in pack: {}, loading default logo instead.", name);
 				if (this == defaultPack) {
 					try {
-						logo = new MinicraftImage(ImageIO.read(Objects.requireNonNull(getClass().getResourceAsStream("/resources/logo.png"))));
+						logo = new MinicraftImage(Image.decode(Objects.requireNonNull(getClass().getResourceAsStream("/resources/logo.png"))));
 					} catch (IOException | NullPointerException e1) {
 						CrashHandler.crashHandle(e1);
 					}
@@ -454,9 +438,9 @@ public class ResourcePackDisplay extends Display {
 				if (!this.isZip)
 					return Files.exists(this.packRootPath) && Files.isDirectory(this.packRootPath);
 
-				zipFile = new ZipFile(new File(this.packRoot.toURI()));
+				zipFile = new ZipFile(new File(this.packRoot));
 				return opened = true;
-			} catch (IOException | URISyntaxException e) {
+			} catch (IOException e) {
 				e.printStackTrace();
 				return opened = false;
 			}
@@ -518,19 +502,22 @@ public class ResourcePackDisplay extends Display {
 					}
 				}
 			} else if (Files.exists(this.packRootPath.resolve(path))) {
-				try (Stream<Path> stream = Files.walk(this.packRootPath.resolve(path), 1)) {
-					stream.forEach(p -> {
-						boolean isDir = Files.isDirectory(p);
-						if ((filter == null || filter.check(p, isDir))) {
-							String pathStr = this.packRootPath.relativize(p).toString().replaceAll("\\\\", "/");
-							if (isDir && !pathStr.endsWith("/")) {
-								pathStr += "/";
-							}
-							paths.add(pathStr);
+				// LAZYVM-GAP: was a stream over Files.walk(dir, 1); LazyVM has no java.util.stream.
+				// The same paths: the directory itself, then its entries.
+				Path dir = this.packRootPath.resolve(path);
+				ArrayList<Path> walked = new ArrayList<>();
+				walked.add(dir);
+				File[] entries = dir.toFile().listFiles();
+				if (entries != null) for (File entry : entries) walked.add(entry.toPath());
+				for (Path p : walked) {
+					boolean isDir = Files.isDirectory(p);
+					if ((filter == null || filter.check(p, isDir))) {
+						String pathStr = this.packRootPath.relativize(p).toString().replaceAll("\\\\", "/");
+						if (isDir && !pathStr.endsWith("/")) {
+							pathStr += "/";
 						}
-					});
-				} catch (IOException e) {
-					e.printStackTrace();
+						paths.add(pathStr);
+					}
 				}
 			}
 
@@ -545,7 +532,16 @@ public class ResourcePackDisplay extends Display {
 	 */
 	public static String readStringFromInputStream(InputStream in) {
 		BufferedReader reader = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8));
-		return String.join("\n", reader.lines().toArray(String[]::new));
+		// LAZYVM-GAP: was String.join over reader.lines(); LazyVM has no java.util.stream.
+		StringBuilder text = new StringBuilder();
+		try {
+			String separator = "";
+			for (String line; (line = reader.readLine()) != null; separator = "\n")
+				text.append(separator).append(line);
+		} catch (IOException e) {
+			throw new UncheckedIOException(e); // As reader.lines() reports it.
+		}
+		return text.toString();
 	}
 
 	/**
@@ -554,7 +550,7 @@ public class ResourcePackDisplay extends Display {
 	 * @param packMeta The input stream of a pack.json file
 	 * @param filename The name to default to if no "name" key found in pack.json
 	 */
-	public static ResourcePack loadPackFromStream(URL url, InputStream packMeta, String filename) throws IOException {
+	public static ResourcePack loadPackFromStream(URI url, InputStream packMeta, String filename) throws IOException {
 		JSONObject meta = new JSONObject(readStringFromInputStream(packMeta));
 		return new ResourcePack(
 			url,
@@ -569,12 +565,12 @@ public class ResourcePackDisplay extends Display {
 	 * @param fileUrl The path of the pack.
 	 * @return The loaded pack with metadata.
 	 */
-	public static ResourcePack loadPackMetadata(URL fileUrl) {
+	public static ResourcePack loadPackMetadata(URI fileUrl) {
 
 		try {
-			File file = new File(fileUrl.toURI());
+			File file = new File(fileUrl);
 			if (file.isDirectory()) {
-				try (InputStream in = Files.newInputStream(Paths.get(fileUrl.toURI()).resolve("pack.json"))) {
+				try (InputStream in = Files.newInputStream(Paths.get(fileUrl).resolve("pack.json"))) {
 					return loadPackFromStream(fileUrl, in, file.getName());
 				}
 			} else {
@@ -584,7 +580,7 @@ public class ResourcePackDisplay extends Display {
 					}
 				}
 			}
-		} catch (JSONException | IOException | URISyntaxException e) {
+		} catch (JSONException | IOException e) {
 			CrashHandler.errorHandle(e, new CrashHandler.ErrorInfo("Cannot Load Resource Pack",
 				CrashHandler.ErrorInfo.ErrorType.REPORT, String.format("Unable to load resource pack: %s.", fileUrl.getPath())));
 		} catch (NullPointerException e) { // pack.json is missing.
@@ -604,7 +600,7 @@ public class ResourcePackDisplay extends Display {
 			Logging.RESOURCEHANDLER_RESOURCEPACK.info("Created resource packs folder at {}.", FOLDER_LOCATION);
 		}
 
-		ArrayList<URL> urls = new ArrayList<>();
+		ArrayList<URI> urls = new ArrayList<>();
 		urls.add(defaultPack.packRoot); // Add default pack first
 
 		// Add already recognized resourcePacks
@@ -621,13 +617,9 @@ public class ResourcePackDisplay extends Display {
 				Path path = dur.toPath().resolve(name);
 				return Files.isDirectory(path) && Files.exists(path.resolve("pack.json"));
 			}))) {
-			try {
-				URL url = file.toPath().toUri().toURL();
-				if(!urls.contains(url))
-					urls.add(url);
-			} catch (MalformedURLException e) {
-				CrashHandler.errorHandle(e);
-			}
+			URI url = file.toPath().toUri();
+			if(!urls.contains(url))
+				urls.add(url);
 		}
 
 		refreshResourcePacks(urls);
@@ -638,7 +630,7 @@ public class ResourcePackDisplay extends Display {
 	 * @param url The url for query.
 	 * @return The found resource pack. {@code null} if not found.
 	 */
-	private static ResourcePack findPackByURL(URL url) {
+	private static ResourcePack findPackByURL(URI url) {
 		for (ResourcePack pack : resourcePacks) {
 			if (pack.packRoot.equals(url)) {
 				return pack;
@@ -652,23 +644,18 @@ public class ResourcePackDisplay extends Display {
 	 * Refreshing the pack list by the urls.
 	 * @param urls The packs' url to be refreshed.
 	 */
-	private static void refreshResourcePacks(List<URL> urls) {
+	private static void refreshResourcePacks(List<URI> urls) {
 		// Reverse from entry-order (default last) to priority order (default first)
 		Collections.reverse(resourcePacks);
 
 		Logging.RESOURCEHANDLER_RESOURCEPACK.debug("Refreshing from " + urls);
-		for (URL url : urls) {
+		for (URI url : urls) {
 			ResourcePack pack = findPackByURL(url);
 			if (pack != null) { // Re-check and refresh if it exists
-				try {
-					if (pack == defaultPack || new File(url.toURI()).exists())
-						pack.refreshPack();
-					else // Remove if it doesn't exist
-						resourcePacks.remove(pack);
-				} catch (URISyntaxException e) {
-					Logging.RESOURCEHANDLER_RESOURCEPACK.debug(e, "Resource pack URL not found.");
+				if (pack == defaultPack || new File(url).exists())
+					pack.refreshPack();
+				else // Remove if it doesn't exist
 					resourcePacks.remove(pack);
-				}
 			} else { // Add as a new pack
 				pack = loadPackMetadata(url);
 				if (pack != null) {
@@ -699,13 +686,8 @@ public class ResourcePackDisplay extends Display {
 	public static void loadResourcePacks(String[] names) {
 		for (String name : names) {
 			for (ResourcePack pack : resourcePacks) {
-				try {
-					if (Paths.get(pack.packRoot.toURI()).equals(FOLDER_LOCATION.toPath().resolve(name))) {
-						pack.enable();
-					}
-				} catch (URISyntaxException e) {
-					e.printStackTrace();
-					Logging.RESOURCEHANDLER_RESOURCEPACK.debug("URL invalid.");
+				if (Paths.get(pack.packRoot).equals(FOLDER_LOCATION.toPath().resolve(name))) {
+					pack.enable();
 				}
 			}
 		}
@@ -719,11 +701,7 @@ public class ResourcePackDisplay extends Display {
 		ArrayList<String> packs = new ArrayList<>();
 		for (ResourcePack pack : resourcePacks) {
 			if (pack != defaultPack && pack.isEnabled()) {
-				try {
-					packs.add(new File(pack.packRoot.toURI()).getName());
-				} catch (URISyntaxException e) {
-					CrashHandler.errorHandle(e);
-				}
+				packs.add(new File(pack.packRoot).getName());
 			}
 		}
 
@@ -824,14 +802,14 @@ public class ResourcePackDisplay extends Display {
 					SpriteLinker.SpriteMeta meta = new SpriteLinker.SpriteMeta();
 					String imgName = m.substring(0, m.length() - 5);
 					pngs.remove(imgName);
-					BufferedImage image = ImageIO.read(pack.getResourceAsStream(imgName));
+					Image image = Image.decode(pack.getResourceAsStream(imgName));
 
 					// Applying animations.
 					MinicraftImage sheet;
 					JSONObject animation = obj.optJSONObject("animation");
 					if (animation != null) {
 						meta.frametime = animation.getInt("frametime");
-						meta.frames = image.getHeight() / 16;
+						meta.frames = image.height / 16;
 						if (meta.frames == 0) throw new IOException(new IllegalArgumentException(String.format(
 							"Invalid frames 0 detected with {} in pack: {}", m, pack.name)));
 						validateImageAsset(pack, imgName, image, 16, 16 * meta.frames);
@@ -850,7 +828,7 @@ public class ResourcePackDisplay extends Display {
 							String borderK = path + meta.border + ".png";
 							pngs.remove(borderK);
 							try {
-								BufferedImage img = ImageIO.read(pack.getResourceAsStream(borderK));
+								Image img = Image.decode(pack.getResourceAsStream(borderK));
 								validateImageAsset(pack, borderK, img, 24, 24);
 								Renderer.spriteLinker.setSprite(type, meta.border, new MinicraftImage(img, 24, 24));
 							} catch (IOException e) {
@@ -865,7 +843,7 @@ public class ResourcePackDisplay extends Display {
 							String cornerK = path + meta.corner + ".png";
 							pngs.remove(cornerK);
 							try {
-								BufferedImage img = ImageIO.read(pack.getResourceAsStream(cornerK));
+								Image img = Image.decode(pack.getResourceAsStream(cornerK));
 								validateImageAsset(pack, cornerK, img, 16, 16);
 								Renderer.spriteLinker.setSprite(type, meta.corner, new MinicraftImage(img, 16, 16));
 							} catch (IOException e) {
@@ -886,7 +864,7 @@ public class ResourcePackDisplay extends Display {
 		// Loading the left pngs.
 		for (String p : pngs) {
 			try {
-				BufferedImage image = ImageIO.read(pack.getResourceAsStream(p));
+				Image image = Image.decode(pack.getResourceAsStream(p));
 				MinicraftImage sheet;
 				if (type == SpriteType.Item) {
 					validateImageAsset(pack, p, image, 8, 8);
@@ -906,7 +884,7 @@ public class ResourcePackDisplay extends Display {
 		}
 	}
 
-	private static void validateImageAsset(ResourcePack pack, String key, BufferedImage image) {
+	private static void validateImageAsset(ResourcePack pack, String key, Image image) {
 		try {
 			MinicraftImage.validateImageDimension(image);
 		} catch (MinicraftImage.MinicraftImageDimensionIncompatibleException e) {
@@ -915,7 +893,7 @@ public class ResourcePackDisplay extends Display {
 		}
 	}
 
-	private static void validateImageAsset(ResourcePack pack, String key, BufferedImage image, int width, int height) {
+	private static void validateImageAsset(ResourcePack pack, String key, Image image, int width, int height) {
 		validateImageAsset(pack, key, image);
 		try {
 			MinicraftImage.validateImageDimension(image, width, height);
@@ -941,7 +919,7 @@ public class ResourcePackDisplay extends Display {
 		if (langJSON != null) {
 			for (String loc : langJSON.keySet()) {
 				try {
-					Locale locale = Locale.forLanguageTag(loc);
+					Locale locale = Localization.forLanguageTag(loc); // LAZYVM-GAP: see Localization.
 					JSONObject info = langJSON.getJSONObject(loc);
 					Localization.addLocale(locale, new Localization.LocaleInformation(locale, info.getString("name"), info.getString("region")));
 				} catch (JSONException e) {
@@ -960,7 +938,7 @@ public class ResourcePackDisplay extends Display {
 				}
 
 				// Add verified localization.
-				Localization.addLocalization(Locale.forLanguageTag(str.substring(0, str.length() - 5)), json);
+				Localization.addLocalization(Localization.forLanguageTag(str.substring(0, str.length() - 5)), json); // LAZYVM-GAP
 			} catch (IOException e) {
 				Logging.RESOURCEHANDLER_LOCALIZATION.debug(e, "Unable to load localization: {} in pack : {}", f, pack.name);
 			} catch (JSONException e) {

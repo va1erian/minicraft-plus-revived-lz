@@ -1,7 +1,7 @@
 package minicraft.gfx;
 
 import minicraft.screen.RelPos;
-import org.tinylog.Logger;
+import minicraft.util.Logger; // LAZYVM-GAP: tinylog cannot run on LazyVM.
 
 import java.util.Arrays;
 

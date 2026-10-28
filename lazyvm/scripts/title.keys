@@ -1,0 +1,4 @@
+# Title screen: wait two seconds, save the window, quit.
+wait 120
+shot title.ppm
+quit

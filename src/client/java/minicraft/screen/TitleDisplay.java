@@ -19,9 +19,8 @@ import minicraft.screen.entry.LinkEntry;
 import minicraft.screen.entry.SelectEntry;
 import minicraft.screen.entry.StringEntry;
 import minicraft.util.BookData;
+import minicraft.util.Clock;
 
-import java.time.LocalDateTime;
-import java.time.Month;
 import java.util.Random;
 
 public class TitleDisplay extends Display {
@@ -72,9 +71,9 @@ public class TitleDisplay extends Display {
 		// Check version
 		checkVersion();
 
-		LocalDateTime time = LocalDateTime.now();
-		if (time.getMonth() == Month.DECEMBER) {
-			if (time.getDayOfMonth() == 19) rand = 1;
+		int[] date = Clock.today(); // LAZYVM-GAP: was LocalDateTime.now(); no java.time.
+		if (date[1] == 12) { // December
+			if (date[2] == 19) rand = 1;
 		} else {
 			rand = random.nextInt(splashes.length - 2) + 2;
 		}

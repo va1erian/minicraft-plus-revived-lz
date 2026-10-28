@@ -43,7 +43,8 @@ public class FileHandler extends Game {
 		String local = "playminicraft/mods/Minicraft_Plus";
 
 		if (OS.contains("windows")) // windows
-			systemGameDir = System.getenv("APPDATA");
+			// LAZYVM-GAP: LazyVM has no System.getenv; APPDATA is <user.home>\AppData\Roaming.
+			systemGameDir = System.getProperty("user.home") + "/AppData/Roaming";
 		else {
 			systemGameDir = System.getProperty("user.home");
 			if (!OS.contains("mac"))
@@ -168,20 +169,14 @@ public class FileHandler extends Game {
 
 	public static Path getJarResourcesPath() {
 		if (jarResourcesPath == null) {
-			Path path;
-			try {
-				path = Paths.get(Objects.requireNonNull(Game.class.getResource("/assets/")).toURI());
-			} catch (URISyntaxException e) {
-				throw new RuntimeException(e); // CRITICAL ERROR (GAME ASSETS)
-			} catch (FileSystemNotFoundException e) {
-				try {
-					FileSystem fs = FileSystems.newFileSystem(Objects.requireNonNull(Game.class.getResource("/assets/")).toURI(), Collections.emptyMap());
-					path = fs.getPath("/assets/");
-				} catch (URISyntaxException | IOException ee1) {
-					throw new RuntimeException(ee1); // CRITICAL ERROR (GAME ASSETS)
-				}
+			// LAZYVM-GAP: LazyVM has neither Class.getResource nor java.net.URL, so the resources
+			// are found as the class path directory that holds "assets/". Upstream also opened a
+			// zip file system for a jar; LazyVM has no java.util.zip, so a jar is not supported.
+			for (String entry : System.getProperty("java.class.path").split(File.pathSeparator)) {
+				if (new File(entry, "assets").isDirectory())
+					return jarResourcesPath = Paths.get(entry).toAbsolutePath();
 			}
-			jarResourcesPath = path.getParent();
+			throw new RuntimeException("No class path directory holds assets/"); // CRITICAL ERROR (GAME ASSETS)
 		}
 		return jarResourcesPath;
 	}

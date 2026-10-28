@@ -1,16 +1,17 @@
 package minicraft.gfx;
 
+import lazy.gfx.Image;
 import minicraft.gfx.SpriteLinker.LinkedSprite;
 import minicraft.util.Logging;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Range;
 
-import java.awt.image.BufferedImage;
 import java.util.Objects;
 
 /**
  * Although we have SpriteLinker, we still need SpriteSheet for buffering.
  * As BufferedImage is heavy. Our current rendering system still depends on this array.
+ * LAZYVM: images are decoded by lazy.gfx.Image (PNG to ARGB) instead of ImageIO's BufferedImage.
  */
 public class MinicraftImage {
 	/**
@@ -42,8 +43,8 @@ public class MinicraftImage {
 	 * @param image the {@code BufferedImage} to be constructed from
 	 * @see LinkedSprite
 	 */
-	public MinicraftImage(@NotNull BufferedImage image) {
-		this(image, image.getWidth(), image.getHeight());
+	public MinicraftImage(@NotNull Image image) {
+		this(image, image.width, image.height);
 	}
 
 	/**
@@ -55,14 +56,17 @@ public class MinicraftImage {
 	 * @throws IllegalArgumentException if either {@code width} or {@code height} is zero or negative
 	 * @see LinkedSprite
 	 */
-	public MinicraftImage(@NotNull BufferedImage image, int width, int height) {
+	public MinicraftImage(@NotNull Image image, int width, int height) {
 		Objects.requireNonNull(image, "image");
 		if (width < 1) throw new IllegalArgumentException("width cannot be zero or negative");
 		if (height < 1) throw new IllegalArgumentException("height cannot be zero or negative");
 
 		this.width = width;
 		this.height = height;
-		pixels = image.getRGB(0, 0, width, height, null, 0, width); // Gets the color array of the image pixels
+		pixels = new int[width * height]; // Gets the color array of the image pixels
+		// LAZYVM: copies the requested corner of the decoded image (was BufferedImage.getRGB).
+		for (int y = 0; y < Math.min(height, image.height); y++)
+			System.arraycopy(image.argb, y * image.width, pixels, y * width, Math.min(width, image.width));
 
 		// Applying the RGB array into Minicraft rendering system 25 bits RBG array.
 		for (int i = 0; i < pixels.length; i++) { // Loops through all the pixels
@@ -99,7 +103,7 @@ public class MinicraftImage {
 	 * @return the constructed {@code Minicraft}
 	 * @throws MinicraftImageDimensionIncompatibleException if the image's dimension is not a multiple of 8
 	 */
-	public static MinicraftImage createDefaultCompatible(BufferedImage image) throws MinicraftImageDimensionIncompatibleException {
+	public static MinicraftImage createDefaultCompatible(Image image) throws MinicraftImageDimensionIncompatibleException {
 		validateImageDimension(image);
 		return new MinicraftImage(image);
 	}
@@ -109,9 +113,9 @@ public class MinicraftImage {
 	 * @param image The image to be validated
 	 * @throws MinicraftImageDimensionIncompatibleException if the image's dimension is not a multiple of 8
 	 */
-	public static void validateImageDimension(BufferedImage image) throws MinicraftImageDimensionIncompatibleException {
-		if (image.getHeight() % 8 != 0 || image.getWidth() % 8 != 0)
-			throw new MinicraftImageDimensionIncompatibleException(image.getWidth(), image.getHeight());
+	public static void validateImageDimension(Image image) throws MinicraftImageDimensionIncompatibleException {
+		if (image.height % 8 != 0 || image.width % 8 != 0)
+			throw new MinicraftImageDimensionIncompatibleException(image.width, image.height);
 	}
 
 	/**
@@ -121,10 +125,10 @@ public class MinicraftImage {
 	 * @param height The requested height
 	 * @throws MinicraftImageRequestOutOfBoundsException if the requested size is out of the image's dimension
 	 */
-	public static void validateImageDimension(BufferedImage image, int width, int height)
+	public static void validateImageDimension(Image image, int width, int height)
 		throws MinicraftImageRequestOutOfBoundsException {
-		if (image.getWidth() < width || image.getHeight() < height)
-			throw new MinicraftImageRequestOutOfBoundsException(image.getWidth(), image.getHeight(), width, height);
+		if (image.width < width || image.height < height)
+			throw new MinicraftImageRequestOutOfBoundsException(image.width, image.height, width, height);
 	}
 
 	public static class MinicraftImageDimensionIncompatibleException extends Exception {

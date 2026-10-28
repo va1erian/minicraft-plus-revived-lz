@@ -19,7 +19,7 @@ import minicraft.level.tile.entity.SignTileEntity;
 import minicraft.screen.SignDisplay;
 import minicraft.screen.SignDisplayMenu;
 import minicraft.util.AdvancementElement;
-import org.tinylog.Logger;
+import minicraft.util.Logger; // LAZYVM-GAP: tinylog cannot run on LazyVM.
 
 public class SignTile extends Tile {
 	protected SignTile() {

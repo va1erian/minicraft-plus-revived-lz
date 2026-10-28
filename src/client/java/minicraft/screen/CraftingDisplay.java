@@ -12,6 +12,7 @@ import minicraft.item.Item;
 import minicraft.item.Items;
 import minicraft.item.Recipe;
 import minicraft.screen.entry.ItemListing;
+import minicraft.util.StreamGap;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
@@ -20,7 +21,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 public class CraftingDisplay extends Display {
 
@@ -59,7 +59,7 @@ public class CraftingDisplay extends Display {
 	}
 
 	private void refreshDisplayRecipes() {
-		List<Recipe> recipes = availableRecipes.stream().filter(unlockedRecipes::contains).collect(Collectors.toList());
+		List<Recipe> recipes = StreamGap.filter(availableRecipes, unlockedRecipes::contains); // LAZYVM-GAP: no streams.
 		recipeMenu = new RecipeMenu(recipes, title, player);
 		this.recipes = recipes.toArray(new Recipe[0]);
 		itemCountMenu.setPositioning(new Point(recipeMenu.getBounds().getRight() + MinicraftImage.boxWidth, recipeMenu.getBounds().getTop()), RelPos.BOTTOM_RIGHT);

@@ -13,9 +13,8 @@ import minicraft.gfx.SpriteLinker.SpriteType;
 import minicraft.level.Level;
 import minicraft.level.tile.Tile;
 import org.jetbrains.annotations.NotNull;
-import org.tinylog.Logger;
+import minicraft.util.Logger; // LAZYVM-GAP: tinylog cannot run on LazyVM.
 
-import java.awt.Rectangle;
 import java.util.ArrayList;
 
 public class SummonItem extends StackableItem {
@@ -71,7 +70,9 @@ public class SummonItem extends StackableItem {
 				// Check if we are on the right level and tile
 				if (level.depth == -4) {
 					// If the player nears the center.
-					if (new Rectangle(level.w / 2 - 3, level.h / 2 - 3, 7, 7).contains(player.x >> 4, player.y >> 4)) {
+					// LAZYVM: the 7 by 7 tile square is tested by hand; it was a java.awt.Rectangle.
+					int px = player.x >> 4, py = player.y >> 4;
+					if (px >= level.w / 2 - 3 && px < level.w / 2 + 4 && py >= level.h / 2 - 3 && py < level.h / 2 + 4) {
 						if (!ObsidianKnight.active) {
 							boolean exists = false;
 							for (Entity e : level.getEntityArray()) {

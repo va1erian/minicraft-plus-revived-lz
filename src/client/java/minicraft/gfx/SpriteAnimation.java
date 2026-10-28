@@ -10,8 +10,8 @@ import minicraft.level.Level;
 import minicraft.level.tile.Tile;
 import minicraft.util.Logging;
 
-import javax.security.auth.DestroyFailedException;
-import javax.security.auth.Destroyable;
+import minicraft.util.DestroyFailedException; // LAZYVM-GAP: LazyVM has no javax.security.auth.
+import minicraft.util.Destroyable;
 
 import java.util.ArrayList;
 import java.util.HashMap;

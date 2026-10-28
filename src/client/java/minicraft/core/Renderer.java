@@ -1,5 +1,6 @@
 package minicraft.core;
 
+import lazy.gfx.Image;
 import minicraft.core.CrashHandler.ErrorInfo;
 import minicraft.core.io.Localization;
 import minicraft.core.io.Settings;
@@ -37,19 +38,7 @@ import minicraft.util.Logging;
 import minicraft.util.Quest;
 import minicraft.util.Quest.QuestSeries;
 
-import javax.imageio.ImageIO;
-
-import java.awt.Canvas;
-import java.awt.Graphics2D;
-import java.awt.geom.AffineTransform;
-import java.awt.image.AffineTransformOp;
-import java.awt.image.BufferStrategy;
-import java.awt.image.BufferedImage;
-import java.awt.image.DataBufferInt;
-import java.io.File;
 import java.io.IOException;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -67,8 +56,9 @@ public class Renderer extends Game {
 	public static Screen screen; // Creates the main screen
 	public static SpriteLinker spriteLinker = new SpriteLinker(); // The sprite linker for sprites
 
-	static Canvas canvas = new Canvas();
-	private static BufferedImage image; // Creates an image to be displayed on the screen.
+	// LAZYVM: the frame is a plain pixel array that Initializer's lazy.gfx window presents,
+	// instead of a BufferedImage drawn on an AWT Canvas.
+	private static final int[] pixels = new int[WIDTH * HEIGHT];
 
 
 	public static boolean readyToRenderGameplay = false;
@@ -86,7 +76,7 @@ public class Renderer extends Game {
 		MinicraftImage skinsSheet;
 		try {
 			// These set the sprites to be used.
-			skinsSheet = MinicraftImage.createDefaultCompatible(ImageIO.read(Objects.requireNonNull(Game.class.getResourceAsStream("/resources/textures/skins.png"))));
+			skinsSheet = MinicraftImage.createDefaultCompatible(Image.decode(Objects.requireNonNull(Game.class.getResourceAsStream("/resources/textures/skins.png")))); // LAZYVM: lazy.gfx decodes PNGs.
 		} catch (NullPointerException e) {
 			// If a provided InputStream has no name. (in practice meaning it cannot be found.)
 			CrashHandler.crashHandle(e, new ErrorInfo("Sprite Sheet Not Found", ErrorInfo.ErrorType.UNEXPECTED, true, "A sprite sheet was not found."));
@@ -101,13 +91,10 @@ public class Renderer extends Game {
 	}
 
 	public static void initScreen() {
-		image = new BufferedImage(WIDTH, HEIGHT, BufferedImage.TYPE_INT_RGB);
-		screen = new Screen(image);
+		screen = new Screen(pixels);
 		//lightScreen = new Screen();
 
 		hudSheet = new LinkedSprite(SpriteType.Gui, "hud");
-
-		canvas.createBufferStrategy(3);
 	}
 
 
@@ -127,60 +114,19 @@ public class Renderer extends Game {
 		if (currentDisplay != null) // Renders menu, if present.
 			currentDisplay.render(screen);
 
-		if (!canvas.hasFocus())
+		if (!Initializer.hasFocus()) // LAZYVM: was canvas.hasFocus().
 			renderFocusNagger(); // Calls the renderFocusNagger() method, which creates the "Click to Focus" message.
-
-
-		BufferStrategy bs = canvas.getBufferStrategy(); // Creates a buffer strategy to determine how the graphics should be buffered.
-		Graphics2D g = (Graphics2D) bs.getDrawGraphics(); // Gets the graphics in which java draws the picture
-		g.clearRect(0, 0, canvas.getWidth(), canvas.getHeight()); // Draws a rect to fill the whole window (to cover last?)
-
-
 
 		// Flushes the screen to the renderer.
 		screen.flush();
 
-		// Scale the pixels.
-		int ww = getWindowSize().width;
-		int hh = getWindowSize().height;
-
-		// Get the image offset.
-		int xOffset = (canvas.getWidth() - ww) / 2 + canvas.getParent().getInsets().left;
-		int yOffset = (canvas.getHeight() - hh) / 2 + canvas.getParent().getInsets().top;
-
-		// Draw the image on the window.
-		g.drawImage(image, xOffset, yOffset, ww, hh, null);
-
-		// Release any system items that are using this method. (so we don't have crappy framerates)
-		g.dispose();
-
-		// Make the picture visible.
-		bs.show();
+		// LAZYVM: the window scales and centres the frame, which the Graphics2D code here did.
+		Initializer.frame.present(pixels, WIDTH, HEIGHT);
 
 		// Screen capturing.
+		// LAZYVM-GAP: screenshots need javax.imageio and java.time, which LazyVM lacks.
 		if (Updater.screenshot > 0) {
-			new File(Game.gameDir + "/screenshots/").mkdirs();
-			int count = 1;
-			LocalDateTime datetime = LocalDateTime.now();
-			String stamp = DateTimeFormatter.ofPattern("yyyy-MM-dd_HH.mm.ss").format(datetime);
-			File file = new File(String.format("%s/screenshots/%s.png", Game.gameDir, stamp));
-			while (file.exists()) {
-				file = new File(String.format("%s/screenshots/%s_%s.png", Game.gameDir, stamp, count));
-				count++;
-			}
-
-			try {
-				// A blank image as same as the canvas
-				BufferedImage img = new BufferedImage(canvas.getWidth(), canvas.getHeight(), BufferedImage.TYPE_INT_RGB);
-				Graphics2D g2d = img.createGraphics();
-				g2d.drawImage(image, xOffset, yOffset, ww, hh, null); // The same invoke as the one on canvas graphics
-				g2d.dispose();
-				ImageIO.write(img, "png", file);
-				Logging.PLAYER.info("Saved screenshot as {}.", file.getName());
-			} catch (IOException e) {
-				CrashHandler.errorHandle(e);
-			}
-
+			Logging.PLAYER.warn("Screenshots are not supported on LazyVM yet.");
 			Updater.screenshot--;
 		}
 	}
@@ -578,10 +524,5 @@ public class Renderer extends Game {
 			Font.draw(msg, screen, xx, yy, Color.get(1, 153));
 		else // ...Bright yellow color
 			Font.draw(msg, screen, xx, yy, Color.get(5, 255));
-	}
-
-
-	static java.awt.Dimension getWindowSize() {
-		return new java.awt.Dimension((int) (WIDTH * SCALE), (int) (HEIGHT * SCALE));
 	}
 }

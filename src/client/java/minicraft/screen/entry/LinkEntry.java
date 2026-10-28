@@ -6,20 +6,8 @@ import minicraft.screen.Menu;
 import minicraft.screen.PopupDisplay;
 import minicraft.screen.RelPos;
 import minicraft.screen.TempDisplay;
-import org.tinylog.Logger;
-
-import java.awt.Desktop;
-import java.awt.Desktop.Action;
-import java.io.IOException;
-import java.net.URI;
 
 public class LinkEntry extends SelectEntry {
-
-	private static boolean checkedDesktop = false;
-	private static Desktop desktop = null;
-	private static boolean canBrowse = false;
-
-	private static final String openMsg = "minicraft.display.gui.link_opening";
 
 	private final int color;
 
@@ -42,33 +30,9 @@ public class LinkEntry extends SelectEntry {
 	}
 
 	public LinkEntry(int color, String text, String url, String failMsg, boolean localize) {
-		super(text, () -> {
-			if (!checkedDesktop) {
-				checkedDesktop = true;
-				if (Desktop.isDesktopSupported()) {
-					desktop = Desktop.getDesktop();
-					canBrowse = desktop.isSupported(Action.BROWSE);
-				}
-			}
-
-			if (canBrowse) {
-				// try to open the download link directly from the browser.
-				try {
-					URI uri = URI.create(url);
-					Game.setDisplay(new TempDisplay(3000, false, true, new Menu.Builder(true, 0, RelPos.CENTER, new StringEntry(Localization.getLocalized(openMsg))).createMenu()));
-					desktop.browse(uri);
-				} catch (IOException e) {
-					Logger.tag("Network").error("Could not parse LinkEntry url \"" + url + "\" into valid URI:");
-					e.printStackTrace();
-					canBrowse = false;
-				}
-			}
-
-			if (!canBrowse) {
-				Game.setDisplay(new PopupDisplay(null, failMsg));
-			}
-
-		}, localize);
+		// LAZYVM: there is no java.awt.Desktop to open a browser with, so the entry shows the URL,
+		// which upstream does when the desktop cannot browse.
+		super(text, () -> Game.setDisplay(new PopupDisplay(null, failMsg)), localize);
 
 		this.color = color;
 	}

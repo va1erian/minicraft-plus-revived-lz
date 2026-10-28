@@ -7,19 +7,10 @@ import minicraft.gfx.SpriteLinker.SpriteType;
 import org.intellij.lang.annotations.MagicConstant;
 import org.jetbrains.annotations.NotNull;
 
-import java.awt.AlphaComposite;
-import java.awt.Graphics2D;
-import java.awt.RadialGradientPaint;
-import java.awt.image.BufferedImage;
-import java.awt.image.DataBufferByte;
-import java.awt.image.DataBufferInt;
-import java.math.BigDecimal;
-import java.math.MathContext;
 import java.util.ArrayDeque;
-import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.stream.IntStream;
 
 public class Screen {
 
@@ -37,7 +28,6 @@ public class Screen {
 	private static final int BIT_MIRROR_X = 0x01; // Written in hexadecimal; binary: 01
 	private static final int BIT_MIRROR_Y = 0x02; // Binary: 10
 
-	private final BufferedImage image;
 	private final int[] pixels;
 
 	private final ArrayDeque<Rendering> renderings = new ArrayDeque<>();
@@ -49,25 +39,41 @@ public class Screen {
 	// So 0 is the start of the item sheet 1024 the start of the tile sheet, 2048 the start of the entity sheet,
 	// And 3072 the start of the gui sheet
 
-	public Screen(BufferedImage image) {
+	// LAZYVM: the screen draws into a plain w * h pixel array (0xRRGGBB) instead of a
+	// BufferedImage, and every rendering below writes those pixels itself instead of using
+	// java.awt.Graphics2D, which LazyVM does not have.
+	public Screen(int[] pixels) {
 		/// Screen width and height are determined by the actual game window size, meaning the screen is only as big as the window.buffer = new BufferedImage(Screen.w, Screen.h);
-		this.image = image;
-		pixels = ((DataBufferInt) image.getRaster().getDataBuffer()).getData();
+		this.pixels = pixels;
 		lightOverlay = new LightOverlay();
 	}
 
 	private interface Rendering {
 		/** Invoked by {@link Renderer#render()}. */
-		void render(Graphics2D graphics);
+		void render();
+	}
+
+	/** LAZYVM: fills the part of a rectangle that lies on the screen, like Graphics.fillRect. */
+	private void fill(int xp, int yp, int rw, int rh, int color) {
+		int x0 = Math.max(xp, 0), x1 = Math.min(xp + rw, w);
+		int y0 = Math.max(yp, 0), y1 = Math.min(yp + rh, h);
+		for (int y = y0; y < y1; y++)
+			for (int x = x0; x < x1; x++)
+				pixels[x + y * w] = color & 0xFFFFFF;
+	}
+
+	/** LAZYVM: sets one pixel if it is on the screen. */
+	private void plot(int x, int y, int color) {
+		if (x >= 0 && y >= 0 && x < w && y < h) pixels[x + y * w] = color & 0xFFFFFF;
 	}
 
 	private void queue(Rendering rendering) {
 		renderings.add(rendering);
 	}
 
-	private static abstract class ClearRendering implements Rendering {}
+	private abstract class ClearRendering implements Rendering {}
 
-	private static class SolidClearRendering extends ClearRendering {
+	private class SolidClearRendering extends ClearRendering {
 		private final int color;
 
 		public SolidClearRendering(int color) {
@@ -75,17 +81,15 @@ public class Screen {
 		}
 
 		@Override
-		public void render(Graphics2D graphics) {
-
-			graphics.setColor(new java.awt.Color(color));
-			graphics.fillRect(0, 0, Screen.w, Screen.h);
+		public void render() {
+			fill(0, 0, Screen.w, Screen.h, color);
 		}
 	}
 
-	private static class PlainClearRendering extends ClearRendering {
+	private class PlainClearRendering extends ClearRendering {
 		@Override
-		public void render(Graphics2D graphics) {
-			graphics.clearRect(0, 0, Screen.w, Screen.h);
+		public void render() {
+			fill(0, 0, Screen.w, Screen.h, 0); // An image's Graphics clears to black.
 		}
 	}
 
@@ -110,7 +114,7 @@ public class Screen {
 		}
 
 		@Override
-		public void render(Graphics2D graphics) {
+		public void render() {
 			int toffs = xt + yt * sheet.width;
 			// Determines if the image should be mirrored...
 			boolean mirrorX = (mirrors & BIT_MIRROR_X) > 0; // Horizontally.
@@ -147,7 +151,7 @@ public class Screen {
 		}
 	}
 
-	private static class FillRectRendering implements Rendering {
+	private class FillRectRendering implements Rendering {
 		private final int xp, yp, w, h, color;
 
 		public FillRectRendering(int xp, int yp, int w, int h, int color) {
@@ -159,13 +163,12 @@ public class Screen {
 		}
 
 		@Override
-		public void render(Graphics2D graphics) {
-			graphics.setColor(new java.awt.Color(color));
-			graphics.fillRect(xp, yp, w, h);
+		public void render() {
+			fill(xp, yp, w, h, color);
 		}
 	}
 
-	private static class DrawRectRendering implements Rendering {
+	private class DrawRectRendering implements Rendering {
 		private final int xp, yp, w, h, color;
 
 		public DrawRectRendering(int xp, int yp, int w, int h, int color) {
@@ -177,13 +180,16 @@ public class Screen {
 		}
 
 		@Override
-		public void render(Graphics2D graphics) {
-			graphics.setColor(new java.awt.Color(color));
-			graphics.drawRect(xp, yp, w, h);
+		public void render() {
+			// Like Graphics.drawRect, the outline covers w + 1 by h + 1 pixels.
+			fill(xp, yp, w + 1, 1, color);
+			fill(xp, yp + h, w + 1, 1, color);
+			fill(xp, yp, 1, h + 1, color);
+			fill(xp + w, yp, 1, h + 1, color);
 		}
 	}
 
-	private static class DrawLineRendering implements Rendering {
+	private class DrawLineRendering implements Rendering {
 		private final int x0, y0, x1, y1, color;
 
 		public DrawLineRendering(int x0, int y0, int x1, int y1, int color) {
@@ -195,9 +201,18 @@ public class Screen {
 		}
 
 		@Override
-		public void render(Graphics2D graphics) {
-			graphics.setColor(new java.awt.Color(color));
-			graphics.drawLine(x0, y0, x1, y1);
+		public void render() {
+			// Bresenham's line, both end points included, like Graphics.drawLine.
+			int dx = Math.abs(x1 - x0), dy = -Math.abs(y1 - y0);
+			int sx = x0 < x1 ? 1 : -1, sy = y0 < y1 ? 1 : -1;
+			int err = dx + dy, x = x0, y = y0;
+			while (true) {
+				plot(x, y, color);
+				if (x == x1 && y == y1) break;
+				int e2 = 2 * err;
+				if (e2 >= dy) { err += dy; x += sx; }
+				if (e2 <= dx) { err += dx; y += sy; }
+			}
 		}
 	}
 
@@ -214,7 +229,7 @@ public class Screen {
 		}
 
 		@Override
-		public void render(Graphics2D graphics) {
+		public void render() {
 			switch (axis) {
 				case 0:
 					for (int i = 0; i < l; i++) { // 1 pixel high and 8 pixel wide
@@ -244,14 +259,21 @@ public class Screen {
 		}
 
 		@Override
-		public void render(Graphics2D graphics) {
+		public void render() {
 			double alpha = lightOverlay.getOverlayOpacity(currentLevel, darkFactor);
-			BufferedImage overlay = lightOverlay.render(xa, ya);
-			graphics.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, .02f)); // Lightening
-			graphics.setColor(java.awt.Color.WHITE);
-			graphics.fillRect(0, 0, w, h);
-			graphics.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, (float) alpha)); // Shaders
-			graphics.drawImage(overlay, null, 0, 0);
+			int[] overlay = lightOverlay.render(xa, ya);
+			// LAZYVM: the two AlphaComposite SRC_OVER passes, done per pixel: white at 2% opacity
+			// (lightening), then the overlay's black at its own opacity times alpha (shaders).
+			for (int i = 0; i < pixels.length; i++) {
+				double shade = 1 - overlay[i] / 255.0 * alpha;
+				double keep = (1 - .02) * shade;
+				int lift = (int) (255 * .02 * shade);
+				int c = pixels[i];
+				int r = (int) (((c >> 16) & 0xFF) * keep) + lift;
+				int g = (int) (((c >> 8) & 0xFF) * keep) + lift;
+				int b = (int) ((c & 0xFF) * keep) + lift;
+				pixels[i] = r << 16 | g << 8 | b;
+			}
 		}
 	}
 
@@ -273,14 +295,13 @@ public class Screen {
 	}
 
 	public void flush() {
-		Graphics2D g2d = image.createGraphics();
 		Rendering rendering;
 		do { // Skips until the latest clear rendering is obtained.
 			rendering = renderings.poll(); // This can prevent redundant renderings operated.
 			if (rendering == null) return;
 		} while (rendering != lastClearRendering);
 		do { // Renders all renderings until all are operated.
-			rendering.render(g2d);
+			rendering.render();
 		} while ((rendering = renderings.poll()) != null);
 	}
 
@@ -468,6 +489,8 @@ public class Screen {
 		lightOverlay.renderLight(x - xOffset, y - yOffset, r);
 	}
 
+	// LAZYVM: the light buffer and the overlay are plain arrays, and the light discs are
+	// drawn by hand instead of with Graphics2D and RadialGradientPaint.
 	private static class LightOverlay {
 		private static final int[] dither = new int[] {
 			0, 8, 2, 10,
@@ -476,29 +499,9 @@ public class Screen {
 			15, 7, 13, 5
 		};
 
-		public final float[] graFractions;
-		public final java.awt.Color[] graColors;
-		public final BufferedImage buffer = new BufferedImage(w, h, BufferedImage.TYPE_BYTE_GRAY);
-		public final byte[] bufPixels;
-		public final BufferedImage overlay = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB);
-		public final int[] olPixels;
+		public final int[] bufPixels = new int[w * h]; // Grade of lightness, 0 to 255.
+		public final int[] olPixels = new int[w * h]; // Opacity of the black overlay, 0 to 255.
 		public final HashMap<@NotNull Point, @NotNull Integer> lights = new HashMap<>();
-
-		public LightOverlay() {
-			bufPixels = ((DataBufferByte) buffer.getRaster().getDataBuffer()).getData();
-			olPixels = ((DataBufferInt) overlay.getRaster().getDataBuffer()).getData();
-			ArrayList<Float> graFractions = new ArrayList<>();
-			ArrayList<java.awt.Color> graColors = new ArrayList<>();
-			BigDecimal oneFiftieth = BigDecimal.ONE.divide(BigDecimal.valueOf(50), MathContext.UNLIMITED);
-			BigDecimal twoFiveFive = BigDecimal.valueOf(255);
-			for (BigDecimal i = BigDecimal.ZERO; i.compareTo(BigDecimal.ONE) <= 0; i = i.add(oneFiftieth)) {
-				graFractions.add(i.floatValue());
-				graColors.add(new java.awt.Color(255, 255, 255, 255 - i.pow(4).multiply(twoFiveFive).intValue()));
-			}
-			this.graFractions = new float[graFractions.size()];
-			for (int i = 0; i < graFractions.size(); ++i) this.graFractions[i] = graFractions.get(i);
-			this.graColors = graColors.toArray(new java.awt.Color[0]);
-		}
 
 		/**
 		 * Gets the overlay light darkness opacity instantly.
@@ -521,10 +524,8 @@ public class Screen {
 			lights.put(new Point(x, y), r);
 		}
 
-		public BufferedImage render(int xa, int ya) {
-			Graphics2D g2d = buffer.createGraphics();
-			g2d.setBackground(java.awt.Color.BLACK);
-			g2d.clearRect(0, 0, w, h);
+		public int[] render(int xa, int ya) {
+			Arrays.fill(bufPixels, 0);
 			for (Map.Entry<Point, Integer> e : lights.entrySet()) {
 				int x = e.getKey().x, y = e.getKey().y, r = e.getValue();
 				boolean[] surrounds = new boolean[8];
@@ -542,31 +543,55 @@ public class Screen {
 				}
 
 				// Reduce lighting circles on screen
-				if (IntStream.range(0, surrounds.length).allMatch(i -> surrounds[i])) {
-					g2d.setColor(java.awt.Color.WHITE);
-					g2d.fillRect(x - 8, y - 8, 16, 16);
+				boolean surrounded = true; // LAZYVM-GAP: was IntStream.allMatch; LazyVM has no java.util.stream.
+				for (boolean s : surrounds) surrounded &= s;
+				if (surrounded) {
+					fillWhite(x - 8, y - 8, 16, 16);
 				} else {
-					g2d.setPaint(new RadialGradientPaint(x, y, r, graFractions, graColors));
-					g2d.fillOval(x - r, y - r, r * 2, r * 2);
+					fillLight(x, y, r);
 				}
 			}
-			g2d.dispose();
 			lights.clear();
 
 			for (int x = 0; x < w; ++x) {
 				for (int y = 0; y < h; ++y) {
 					int i = x + y * w;
 					// Grade of lightness
-					int grade = bufPixels[i] & 0xFF;
+					int grade = bufPixels[i];
 					// (a + b) & 3 acts like (a + b) % 4
 					if (grade / 10 <= dither[((x + xa) & 3) + ((y + ya) & 3) * 4]) {
-						olPixels[i] = (255 - grade) << 24;
+						olPixels[i] = 255 - grade;
 					} else {
 						olPixels[i] = 0;
 					}
 				}
 			}
-			return overlay;
+			return olPixels;
+		}
+
+		private void fillWhite(int x0, int y0, int rw, int rh) {
+			for (int y = Math.max(y0, 0); y < Math.min(y0 + rh, h); y++)
+				for (int x = Math.max(x0, 0); x < Math.min(x0 + rw, w); x++)
+					bufPixels[x + y * w] = 255;
+		}
+
+		/**
+		 * Paints a light disc of radius r: white whose opacity falls from full at the centre to
+		 * none at the rim as 1 - t^4 (t = distance / r), blended over the buffer. Upstream built
+		 * that falloff as a 51-stop RadialGradientPaint (with BigDecimal, also missing on
+		 * LazyVM). Pixels are sampled at their centres, as Java2D does.
+		 */
+		private void fillLight(int cx, int cy, int r) {
+			if (r <= 0) return;
+			for (int y = Math.max(cy - r, 0); y < Math.min(cy + r, h); y++) {
+				for (int x = Math.max(cx - r, 0); x < Math.min(cx + r, w); x++) {
+					double dx = x + .5 - cx, dy = y + .5 - cy;
+					double t2 = (dx * dx + dy * dy) / ((double) r * r);
+					if (t2 > 1) continue;
+					int i = x + y * w;
+					bufPixels[i] += (int) ((255 - bufPixels[i]) * (1 - t2 * t2));
+				}
+			}
 		}
 	}
 }

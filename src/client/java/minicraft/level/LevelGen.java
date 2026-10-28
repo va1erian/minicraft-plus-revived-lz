@@ -11,14 +11,9 @@ import minicraft.core.Game;
 
 import minicraft.level.tile.Tiles;
 import minicraft.util.Simplex;
-import org.tinylog.Logger;
+import minicraft.util.Logger; // LAZYVM-GAP: tinylog cannot run on LazyVM.
 
-import javax.imageio.ImageIO;
-import javax.swing.ImageIcon;
-import javax.swing.JOptionPane;
 
-import java.awt.Image;
-import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -160,7 +155,6 @@ public class LevelGen {
 
 			if (map == null) continue;
 
-			BufferedImage img = new BufferedImage(w, h, BufferedImage.TYPE_INT_RGB);
 			int[] pixels = new int[w * h];
 			for (int y = 0; y < h; y++) {
 				for (int x = 0; x < w; x++) {
@@ -193,14 +187,10 @@ public class LevelGen {
 					// pixels[i] = (int)Math.max(Math.min(map.getTileNoise(x, y).getHeight(x, y)*127+128, 255), 0);
 				}
 			}
-			img.setRGB(0, 0, w, h, pixels, 0, w);
-
-			try {
-				ImageIO.write(img, "png", new File("./seed" + LevelGen.worldSeed + ".png"));
-			} catch(IOException ignored) {}
-
-			int op = JOptionPane.showOptionDialog(null, null, "Map With Seed " + worldSeed, JOptionPane.DEFAULT_OPTION, JOptionPane.PLAIN_MESSAGE,
-				new ImageIcon(img.getScaledInstance(w, h, Image.SCALE_AREA_AVERAGING)), new String[] { "Next", "0x100", "0xAAFF20" }, "Next");
+			// LAZYVM: no javax.imageio, so the map is no longer saved as ./seed<seed>.png, and a
+			// lazy.gfx window replaces the JOptionPane that showed it.
+			int op = LevelViewer.showMap("Map With Seed " + worldSeed, pixels, w, h, 1, new String[] { "Next", "0x100", "0xAAFF20" });
+			if (op < 0) return; // The window is gone; JOptionPane would have opened a new one.
 			if (op == 1) LevelGen.worldSeed = 0x100;
 			else if (op == 2) LevelGen.worldSeed = 0xAAFF20;
 			else LevelGen.worldSeed++;

@@ -7,6 +7,7 @@ import minicraft.gfx.Screen;
 import minicraft.screen.entry.InputEntry;
 import minicraft.screen.entry.ListEntry;
 import minicraft.screen.entry.StringEntry;
+import minicraft.util.StreamGap;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -54,7 +55,7 @@ public class PopupDisplay extends Display {
 			this.callbacks = null;
 		}
 
-		if (Stream.of(entries).anyMatch(e -> e instanceof InputEntry))
+		if (StreamGap.anyMatch(entries, e -> e instanceof InputEntry)) // LAZYVM-GAP: no streams.
 			onScreenKeyboardMenu = OnScreenKeyboardMenu.checkAndCreateMenu();
 		if (onScreenKeyboardMenu == null)
 			menus = new Menu[] { builder.createMenu() };

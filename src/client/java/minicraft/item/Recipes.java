@@ -6,30 +6,10 @@ import minicraft.saveload.Save;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import javax.swing.BorderFactory;
-import javax.swing.Box;
-import javax.swing.BoxLayout;
-import javax.swing.JButton;
-import javax.swing.JDialog;
-import javax.swing.JLabel;
-import javax.swing.JOptionPane;
-import javax.swing.JPanel;
-import javax.swing.JTextArea;
-import javax.swing.JTextField;
-import javax.swing.Spring;
-import javax.swing.SpringLayout;
-import javax.swing.UIManager;
-import javax.swing.border.EmptyBorder;
-
-import java.awt.BorderLayout;
-import java.awt.Component;
-import java.awt.Container;
-import java.awt.Dialog;
-import java.awt.Frame;
-import java.awt.event.WindowEvent;
-import java.awt.event.WindowListener;
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -329,91 +309,21 @@ public class Recipes {
 				recipeMap.put(itemNameFixer.apply(recipe.getProduct()), recipe);
 			}
 		}
+		BufferedReader console = new BufferedReader(new InputStreamReader(System.in));
 		for (String key : duplicatedRecipes.keySet()) {
 			HashSet<Recipe> duplications = duplicatedRecipes.get(key);
-			HashMap<Recipe, JTextField> inputs = new HashMap<>();
-			JDialog dialog = new JDialog((Frame) null, "Recipe Duplication: " + key);
-			dialog.setLayout(new BorderLayout());
-			dialog.setDefaultCloseOperation(JDialog.DO_NOTHING_ON_CLOSE);
-			dialog.addWindowListener(new WindowListener() {
-				@Override
-				public void windowOpened(WindowEvent e) {}
-				@Override
-				public void windowClosing(WindowEvent e) {
-					dialog.setVisible(false);
-					JOptionPane.showMessageDialog(null, "Exit Program");
-					dialog.dispose();
-					System.exit(0);
-				}
-				@Override
-				public void windowClosed(WindowEvent e) {}
-				@Override
-				public void windowIconified(WindowEvent e) {}
-				@Override
-				public void windowDeiconified(WindowEvent e) {}
-				@Override
-				public void windowActivated(WindowEvent e) {}
-				@Override
-				public void windowDeactivated(WindowEvent e) {}
-			});
-
-			JPanel inputPanel = new JPanel(new SpringLayout());
-			inputPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+			// LAZYVM: the names are asked for on the console instead of in a Swing dialog.
+			System.out.println("Recipe Duplication: " + key);
 			for (Recipe recipe : duplications) {
-				JLabel l = new JLabel(recipe.toString(), JLabel.TRAILING);
-				inputPanel.add(l);
-				JTextField textField = new JTextField(key, 20);
-				l.setLabelFor(textField);
-				inputPanel.add(textField);
-				inputs.put(recipe, textField);
-			}
-
-			makeCompactGrid(inputPanel,
-				duplications.size(), 2, //rows, cols
-				6, 6,        //initX, initY
-				6, 6);       //xPad, yPad
-
-			JPanel buttonPane = new JPanel();
-			buttonPane.setLayout(new BoxLayout(buttonPane, BoxLayout.X_AXIS));
-			buttonPane.setBorder(BorderFactory.createEmptyBorder(0, 10, 10, 10));
-			buttonPane.add(Box.createHorizontalGlue());
-			JButton doneButton = new JButton("Done");
-			doneButton.addActionListener(e -> {
-				inputs.forEach((recipe, text) -> recipeMap.put(text.getText(), recipe));
-				dialog.setVisible(false);
-				dialog.dispose();
-			});
-			doneButton.setDefaultCapable(true);
-			buttonPane.add(doneButton);
-			buttonPane.add(Box.createHorizontalGlue());
-
-			class JMultilineLabel extends JTextArea { // Reference: https://stackoverflow.com/a/11034405
-				private static final long serialVersionUID = 1L;
-				public JMultilineLabel(String text){
-					super(text); // According to Mr. Polywhirl, this might improve it -> text + System.lineSeparator()
-					setEditable(false);
-					setCursor(null);
-					setOpaque(false);
-					setFocusable(false);
-					setFont(UIManager.getFont("Label.font"));
-					setWrapStyleWord(true);
-					setLineWrap(true);
-					//According to Mariana this might improve it
-					setBorder(new EmptyBorder(5, 5, 5, 5));
-					setAlignmentY(JLabel.CENTER_ALIGNMENT);
+				System.out.print(recipe + " [" + key + "]: ");
+				String name;
+				try {
+					name = console.readLine();
+				} catch (IOException e) {
+					throw new RuntimeException(e);
 				}
+				recipeMap.put(name == null || name.trim().isEmpty() ? key : name.trim(), recipe);
 			}
-
-			Container dialogPane = dialog.getContentPane();
-			dialogPane.add(new JMultilineLabel("Recipes:\n" +
-					String.join("\n", duplicatedRecipes.get(key).stream().<CharSequence>map(Recipe::toString)::iterator)),
-				BorderLayout.NORTH);
-			dialogPane.add(inputPanel, BorderLayout.CENTER);
-			dialogPane.add(buttonPane, BorderLayout.SOUTH);
-			dialog.pack();
-			dialog.setLocationRelativeTo(null);
-			dialog.setModalityType(Dialog.ModalityType.APPLICATION_MODAL);
-			dialog.setVisible(true);
 		}
 
 		JSONObject json = new JSONObject();
@@ -468,116 +378,5 @@ public class Recipes {
 		} catch (IOException e) {
 			throw new RuntimeException(e);
 		}
-	}
-
-	/* Used by makeCompactGrid. */
-	private static SpringLayout.Constraints getConstraintsForCell(
-		int row, int col,
-		Container parent,
-		int cols) {
-		SpringLayout layout = (SpringLayout) parent.getLayout();
-		Component c = parent.getComponent(row * cols + col);
-		return layout.getConstraints(c);
-	}
-
-	/*
-	 * Copyright (c) 1995, 2008, Oracle and/or its affiliates. All rights reserved.
-	 *
-	 * Redistribution and use in source and binary forms, with or without
-	 * modification, are permitted provided that the following conditions
-	 * are met:
-	 *
-	 *   - Redistributions of source code must retain the above copyright
-	 *     notice, this list of conditions and the following disclaimer.
-	 *
-	 *   - Redistributions in binary form must reproduce the above copyright
-	 *     notice, this list of conditions and the following disclaimer in the
-	 *     documentation and/or other materials provided with the distribution.
-	 *
-	 *   - Neither the name of Oracle or the names of its
-	 *     contributors may be used to endorse or promote products derived
-	 *     from this software without specific prior written permission.
-	 *
-	 * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS
-	 * IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
-	 * THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-	 * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-	 * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-	 * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-	 * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-	 * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
-	 * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-	 * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-	 * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-	 */
-
-	/**
-	 * Aligns the first <code>rows</code> * <code>cols</code>
-	 * components of <code>parent</code> in
-	 * a grid. Each component in a column is as wide as the maximum
-	 * preferred width of the components in that column;
-	 * height is similarly determined for each row.
-	 * The parent is made just big enough to fit them all.
-	 *
-	 * @param rows number of rows
-	 * @param cols number of columns
-	 * @param initialX x location to start the grid at
-	 * @param initialY y location to start the grid at
-	 * @param xPad x padding between cells
-	 * @param yPad y padding between cells
-	 */
-	@SuppressWarnings("SameParameterValue")
-	private static void makeCompactGrid(Container parent,
-										int rows, int cols,
-										int initialX, int initialY,
-										int xPad, int yPad) {
-		SpringLayout layout;
-		try {
-			layout = (SpringLayout)parent.getLayout();
-		} catch (ClassCastException exc) {
-			System.err.println("The first argument to makeCompactGrid must use SpringLayout.");
-			return;
-		}
-
-		//Align all cells in each column and make them the same width.
-		Spring x = Spring.constant(initialX);
-		for (int c = 0; c < cols; c++) {
-			Spring width = Spring.constant(0);
-			for (int r = 0; r < rows; r++) {
-				width = Spring.max(width,
-					getConstraintsForCell(r, c, parent, cols).
-						getWidth());
-			}
-			for (int r = 0; r < rows; r++) {
-				SpringLayout.Constraints constraints =
-					getConstraintsForCell(r, c, parent, cols);
-				constraints.setX(x);
-				constraints.setWidth(width);
-			}
-			x = Spring.sum(x, Spring.sum(width, Spring.constant(xPad)));
-		}
-
-		//Align all cells in each row and make them the same height.
-		Spring y = Spring.constant(initialY);
-		for (int r = 0; r < rows; r++) {
-			Spring height = Spring.constant(0);
-			for (int c = 0; c < cols; c++) {
-				height = Spring.max(height,
-					getConstraintsForCell(r, c, parent, cols).
-						getHeight());
-			}
-			for (int c = 0; c < cols; c++) {
-				SpringLayout.Constraints constraints =
-					getConstraintsForCell(r, c, parent, cols);
-				constraints.setY(y);
-				constraints.setHeight(height);
-			}
-			y = Spring.sum(y, Spring.sum(height, Spring.constant(yPad)));
-		}
-
-		//Set the parent's size.
-		SpringLayout.Constraints pCons = layout.getConstraints(parent);
-		pCons.setConstraint(SpringLayout.SOUTH, y);
-		pCons.setConstraint(SpringLayout.EAST, x);
 	}
 }

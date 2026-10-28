@@ -1,7 +1,7 @@
 package minicraft.saveload;
 
 import org.jetbrains.annotations.NotNull;
-import org.tinylog.Logger;
+import minicraft.util.Logger; // LAZYVM-GAP: tinylog cannot run on LazyVM.
 
 public class Version implements Comparable<Version> {
 	private int make, major, minor, dev;

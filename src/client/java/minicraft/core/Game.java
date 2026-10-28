@@ -93,17 +93,24 @@ public class Game {
 
 
 	public static void main(String[] args) {
-		Thread.setDefaultUncaughtExceptionHandler(CrashHandler::crashHandle);
+		// LAZYVM-GAP: LazyVM has no Thread.UncaughtExceptionHandler, and the game runs on one
+		// thread, so a catch around main does the handler's job.
+		try {
+			run(args);
+		} catch (Throwable t) {
+			CrashHandler.crashHandle(t);
+		}
+	}
 
+	private static void run(String[] args) {
 		Initializer.parseArgs(args); // Parses the command line arguments
 		// Applying Game#debug first.
 
 		new Load(true, true); // This loads basic saved preferences.
-		// Reference: https://stackoverflow.com/a/13832805
-		if ((boolean) Settings.get("hwa")) System.setProperty("sun.java2d.opengl", "true");
+		// LAZYVM: the "hwa" setting selected Java2D's OpenGL pipeline; there is no Java2D here.
 		MAX_FPS = (int) Settings.get("fps"); // DO NOT put this above.
 
-		input = new InputHandler(Renderer.canvas);
+		input = new InputHandler(); // LAZYVM: Initializer feeds it from the window's events.
 
 		ResourcePackDisplay.initPacks();
 		ResourcePackDisplay.reloadResources();
@@ -132,6 +139,7 @@ public class Game {
 		Initializer.run();
 
 		Logging.GAMEHANDLER.debug("Main game loop ended; Terminating application...");
+		Initializer.frame.close(); // LAZYVM: lets lazy.gfx write its -Dlazy.gfx.dump frame.
 		System.exit(0);
 	}
 }

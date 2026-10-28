@@ -29,7 +29,7 @@ import minicraft.item.PowerGloveItem;
 import minicraft.item.ToolItem;
 import minicraft.item.ToolType;
 import org.jetbrains.annotations.NotNull;
-import org.tinylog.Logger;
+import minicraft.util.Logger; // LAZYVM-GAP: tinylog cannot run on LazyVM.
 
 import java.util.ArrayList;
 import java.util.Random;

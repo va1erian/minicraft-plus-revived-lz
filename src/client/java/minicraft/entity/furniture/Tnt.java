@@ -18,11 +18,7 @@ import minicraft.level.tile.Tile;
 import minicraft.level.tile.Tiles;
 import minicraft.screen.AchievementsDisplay;
 
-import javax.swing.Timer;
-
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.util.List;
+import java.util.List; // LAZYVM: unused javax.swing and java.awt imports removed.
 
 public class Tnt extends Furniture {
 	private static int FUSE_TIME = 90;

@@ -3,7 +3,7 @@ package minicraft.core.io;
 import minicraft.util.Logging;
 import org.jetbrains.annotations.NotNull;
 import org.json.JSONObject;
-import org.tinylog.Logger;
+import minicraft.util.Logger; // LAZYVM-GAP: tinylog cannot run on LazyVM.
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -28,6 +28,22 @@ public class Localization {
 	private static final HashMap<Locale, LocaleInformation> localeInfo = new HashMap<>();
 
 	/**
+	 * LAZYVM-GAP: LazyVM's Locale has no BCP 47 tags (forLanguageTag, toLanguageTag). The game
+	 * only uses "language-REGION" tags such as "en-us", so these two handle just that form.
+	 */
+	public static Locale forLanguageTag(String tag) {
+		String[] parts = tag.split("-");
+		if (parts[0].isEmpty() || parts[0].equals("und")) return Locale.ROOT;
+		return new Locale(parts[0].toLowerCase(), parts.length > 1 ? parts[1].toUpperCase() : "");
+	}
+
+	/** LAZYVM-GAP: the counterpart of {@link #forLanguageTag(String)}. */
+	public static String toLanguageTag(Locale locale) {
+		if (locale.getLanguage().isEmpty()) return "und";
+		return locale.getCountry().isEmpty() ? locale.getLanguage() : locale.getLanguage() + "-" + locale.getCountry();
+	}
+
+	/**
 	 * Get the provided key's localization for the currently selected language.
 	 * @param key The key to localize.
 	 * @param arguments The additional arguments to format the localized string.
@@ -48,7 +64,7 @@ public class Localization {
 			if (!knownUnlocalizedStrings.containsKey(selectedLocale))
 				knownUnlocalizedStrings.put(selectedLocale, new HashSet<>());
 			if (!knownUnlocalizedStrings.get(selectedLocale).contains(key)) {
-				Logger.tag("LOC").trace(unlocalizedStringTracing ? new Throwable("Tracing") : null, "{}: '{}' is unlocalized.", selectedLocale.toLanguageTag(), key);
+				Logger.tag("LOC").trace(unlocalizedStringTracing ? new Throwable("Tracing") : null, "{}: '{}' is unlocalized.", toLanguageTag(selectedLocale), key); // LAZYVM-GAP
 				knownUnlocalizedStrings.get(selectedLocale).add(key);
 			}
 		}
@@ -92,7 +108,7 @@ public class Localization {
 	 * @param newLanguage The language-country code of the language to load.
 	 */
 	public static void changeLanguage(@NotNull String newLanguage) {
-		changeLanguage(Locale.forLanguageTag(newLanguage));
+		changeLanguage(forLanguageTag(newLanguage)); // LAZYVM-GAP: see forLanguageTag.
 	}
 
 	/**

@@ -14,6 +14,7 @@ import minicraft.screen.entry.StringEntry;
 import minicraft.util.AdvancementElement;
 import minicraft.util.Logging;
 import minicraft.util.TutorialElement;
+import minicraft.util.StreamGap;
 import org.json.JSONObject;
 
 import java.io.IOException;
@@ -114,7 +115,7 @@ public class TutorialDisplayHandler {
 		} else {
 			ArrayList<TutorialElement> revertedElements = new ArrayList<>(tutorialElements);
 			Collections.reverse(revertedElements);
-			TutorialElement completed = revertedElements.stream().filter(AdvancementElement::isCompleted).findFirst().orElse(null);
+			TutorialElement completed = StreamGap.first(revertedElements, AdvancementElement::isCompleted); // LAZYVM-GAP: no streams.
 			if (completed != null && currentOngoingElement != null) {
 				if (tutorialElements.indexOf(completed) > tutorialElements.indexOf(currentOngoingElement)) {
 					currentOngoingElement = completed;
@@ -262,11 +263,11 @@ public class TutorialDisplayHandler {
 	public static void load(JSONObject json) {
 		reset(false);
 		String tutorialKey = json.optString("CurrentOngoingTutorial", null);
-		currentOngoingElement = tutorialKey == null ? null : tutorialElements.stream()
-			.filter(element -> element.key.equals(tutorialKey)).findFirst().orElse(null);
+		currentOngoingElement = tutorialKey == null ? null : StreamGap.first(tutorialElements,
+			element -> element.key.equals(tutorialKey)); // LAZYVM-GAP: no streams.
 		for (String k : json.keySet()) {
-			tutorialElements.stream().filter(e -> e.key.equals(k))
-				.findFirst().ifPresent(element -> element.load(json.getJSONObject(k)));
+			TutorialElement element = StreamGap.first(tutorialElements, e -> e.key.equals(k));
+			if (element != null) element.load(json.getJSONObject(k));
 		}
 
 		if (currentOngoingElement != null) currentOngoingElement.update();

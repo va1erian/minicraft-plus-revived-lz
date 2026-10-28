@@ -1,8 +1,6 @@
 package minicraft.util;
 
-import org.tinylog.Logger;
-import org.tinylog.TaggedLogger;
-
+// LAZYVM-GAP: Logger and TaggedLogger are the game's own stand-ins in this package, not tinylog's.
 public final class Logging {
 	public static boolean logTime = false;
 	public static boolean logThread = false;

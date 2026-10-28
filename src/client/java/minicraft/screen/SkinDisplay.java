@@ -1,5 +1,6 @@
 package minicraft.screen;
 
+import lazy.gfx.Image;
 import minicraft.core.CrashHandler;
 import minicraft.core.Game;
 import minicraft.core.Renderer;
@@ -19,10 +20,8 @@ import minicraft.screen.entry.SelectEntry;
 import minicraft.util.Logging;
 import org.jetbrains.annotations.NotNull;
 
-import javax.imageio.ImageIO;
-import javax.security.auth.DestroyFailedException;
+import minicraft.util.DestroyFailedException; // LAZYVM-GAP: LazyVM has no javax.security.auth.
 
-import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -70,7 +69,9 @@ public class SkinDisplay extends Display {
 				.createMenu()
 		);
 
-		thread = new WatcherThread();
+		// LAZYVM-GAP: no hot reloading; the watcher needs Thread.start() and a WatchService,
+		// neither of which LazyVM has.
+		thread = null;
 		refreshSkins();
 		refreshEntries();
 		menus[0].setSelection(new ArrayList<>(skins.keySet()).indexOf(selectedSkin));
@@ -194,7 +195,7 @@ public class SkinDisplay extends Display {
 			String skinPath = file.getName();
 			String name = skinPath.substring(0, skinPath.length() - 4);
 			if (file.exists()) try {
-				BufferedImage img = ImageIO.read(Files.newInputStream(file.toPath()));
+				Image img = Image.decode(Files.newInputStream(file.toPath())); // LAZYVM: lazy.gfx decodes PNGs.
 				MinicraftImage.validateImageDimension(img);
 				MinicraftImage.validateImageDimension(img, 64, 32);
 				MinicraftImage sheet = new MinicraftImage(img, 64, 32);
@@ -248,7 +249,7 @@ public class SkinDisplay extends Display {
 
 	@Override
 	public void onExit() {
-		thread.close();
+		if (thread != null) thread.close(); // LAZYVM: there is no watcher.
 		releaseSkins();
 	}
 

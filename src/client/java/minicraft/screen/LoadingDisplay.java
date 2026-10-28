@@ -1,6 +1,7 @@
 package minicraft.screen;
 
 import minicraft.core.Game;
+import minicraft.core.Renderer;
 import minicraft.core.World;
 import minicraft.core.io.InputHandler;
 import minicraft.core.io.Localization;
@@ -92,10 +93,21 @@ public class LoadingDisplay extends Display {
 	public static void setMessage(String progressType, boolean localize) {
 		LoadingDisplay.progressType = progressType;
 		localizeProgressType = localize;
+		redraw();
 	}
 
 	public static void progress(float amt) {
 		percentage = Math.min(100, percentage + amt);
+		redraw();
+	}
+
+	/**
+	 * LAZYVM-GAP: the world is built on the game thread (see tick), so the game loop cannot draw
+	 * meanwhile. Drawing a frame here when the progress changes shows it, and presenting lets
+	 * the window handle its own events between steps.
+	 */
+	private static void redraw() {
+		if (Game.getDisplay() instanceof LoadingDisplay) Renderer.render();
 	}
 
 	@Override

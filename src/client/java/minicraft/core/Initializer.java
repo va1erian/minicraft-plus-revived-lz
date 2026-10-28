@@ -83,6 +83,7 @@ public class Initializer extends Game {
 		double unprocessed = 0;
 		int frames = 0;
 		int ticks = 0;
+		long tickNanos = 0, renderNanos = 0; // LAZYVM: measurements.
 		long lastTimer1 = System.currentTimeMillis();
 
 		while (running) {
@@ -98,7 +99,9 @@ public class Initializer extends Game {
 			while (unprocessed >= 1) { // If there is unprocessed time, then tick.
 				ticks++;
 				if (keyScript != null) keyScript.tick(input, frame); // LAZYVM: debug-only scripted input.
+				long tickStart = System.nanoTime(); // LAZYVM: measurements.
 				Updater.tick(); // Calls the tick method (in which it calls the other tick methods throughout the code.
+				tickNanos += System.nanoTime() - tickStart;
 				unprocessed--;
 			}
 
@@ -107,6 +110,7 @@ public class Initializer extends Game {
 				frames++;
 				lastRender = now;
 				Renderer.render();
+				renderNanos += System.nanoTime() - now; // LAZYVM: measurements.
 			}
 
 			try {
@@ -127,7 +131,10 @@ public class Initializer extends Game {
 
 				fra = (int) Math.round(frames * 1000D / interval); // Saves total frames in last second
 				tik = (int) Math.round(ticks * 1000D / interval); // Saves total ticks in last second
-				if (logStats) System.out.println("[LAZYVM] " + fra + " fps, " + tik + " tps"); // LAZYVM: measurements.
+				if (logStats) // LAZYVM: measurements, with the mean time of one tick and of one frame.
+					System.out.println("[LAZYVM] " + fra + " fps, " + tik + " tps, " + (ticks == 0 ? 0 : tickNanos / ticks / 1000000)
+						+ " ms/tick, " + (frames == 0 ? 0 : renderNanos / frames / 1000000) + " ms/frame");
+				tickNanos = renderNanos = 0;
 				frames = 0; // Resets frames
 				ticks = 0; // Resets ticks; ie, frames and ticks only are per second
 			}

@@ -1,0 +1,512 @@
+Compile of the port against LazyVM's lazyrt.jar as boot class path
+(python lazyvm/build.py --report). 99 errors, deduplicated below;
+each entry gives the error count and up to three call sites.
+
+== Missing classes (or classes in missing packages): 14 ==
+WatchEvent                                                      3  src/client/java/minicraft/screen/SkinDisplay.java:164, src/client/java/minicraft/screen/SkinDisplay.java:169, src/client/java/minicraft/screen/SkinDisplay.java:169
+WatchService                                                    1  src/client/java/minicraft/screen/SkinDisplay.java:142
+java.net.URL                                                    2  src/client/java/minicraft/core/io/FileHandler.java:12, src/client/java/minicraft/core/io/FileHandler.java:205
+java.nio.file.StandardWatchEventKinds                           5  src/client/java/minicraft/screen/ResourcePackDisplay.java:42, src/client/java/minicraft/screen/ResourcePackDisplay.java:226, src/client/java/minicraft/screen/ResourcePackDisplay.java:227 ...
+java.nio.file.WatchEvent                                        4  src/client/java/minicraft/screen/ResourcePackDisplay.java:43, src/client/java/minicraft/screen/ResourcePackDisplay.java:241, src/client/java/minicraft/screen/ResourcePackDisplay.java:246 ...
+java.nio.file.WatchService                                      2  src/client/java/minicraft/screen/ResourcePackDisplay.java:44, src/client/java/minicraft/screen/ResourcePackDisplay.java:219
+java.security.InvalidParameterException                         2  src/client/java/minicraft/level/noise/LevelNoise.java:3, src/client/java/minicraft/level/noise/LevelNoise.java:28
+java.util.concurrent.Executors                                  2  src/client/java/minicraft/screen/OptionsWorldDisplay.java:17, src/client/java/minicraft/screen/OptionsWorldDisplay.java:37
+java.util.concurrent.atomic.AtomicBoolean                      17  src/client/java/minicraft/saveload/Load.java:97, src/client/java/minicraft/saveload/Load.java:146, src/client/java/minicraft/saveload/Load.java:146 ...
+java.util.stream.Collectors                                    10  src/client/java/minicraft/screen/SignDisplayMenu.java:14, src/client/java/minicraft/saveload/Load.java:101, src/client/java/minicraft/screen/QuestsDisplay.java:39 ...
+java.util.stream.Stream                                         6  src/client/java/minicraft/core/io/FileHandler.java:26, src/client/java/minicraft/screen/OnScreenKeyboardMenu.java:19, src/client/java/minicraft/screen/PopupDisplay.java:14 ...
+java.util.zip.ZipEntry                                          3  src/client/java/minicraft/screen/ResourcePackDisplay.java:51, src/client/java/minicraft/screen/ResourcePackDisplay.java:494, src/client/java/minicraft/screen/ResourcePackDisplay.java:495
+java.util.zip.ZipFile                                           5  src/client/java/minicraft/screen/ResourcePackDisplay.java:52, src/client/java/minicraft/screen/ResourcePackDisplay.java:368, src/client/java/minicraft/screen/ResourcePackDisplay.java:441 ...
+org.tinylog.configuration.ServiceLoader                         1  src/client/java/minicraft/util/TinylogLoggingConfiguration.java:66
+
+== Missing members (Type.member as javac names them): 11 ==
+ArrayList.stream()                                              4  src/client/java/minicraft/item/ClothingItem.java:50, src/client/java/minicraft/screen/QuestsDisplay.java:392, src/client/java/minicraft/screen/QuestsDisplay.java:404 ...
+Arrays.stream(Object[])                                         2  src/client/java/minicraft/item/Recipes.java:265, src/client/java/minicraft/item/Recipes.java:284
+Class.getResource(String)                                       1  src/client/java/minicraft/core/io/FileHandler.java:205
+Collection.stream()                                             3  src/client/java/minicraft/screen/QuestsDisplay.java:270, src/client/java/minicraft/screen/QuestsDisplay.java:274, src/client/java/minicraft/screen/QuestsDisplay.java:374
+FileSystem.newWatchService()                                    2  src/client/java/minicraft/screen/ResourcePackDisplay.java:225, src/client/java/minicraft/screen/SkinDisplay.java:148
+Files.walk(Path)                                                3  src/client/java/minicraft/core/io/FileHandler.java:187, src/client/java/minicraft/core/io/FileHandler.java:212, src/client/java/minicraft/core/io/FileHandler.java:219
+HashSet.stream()                                                2  src/client/java/minicraft/item/Recipes.java:296, src/client/java/minicraft/item/Recipes.java:297
+List.stream()                                                   3  src/client/java/minicraft/screen/SignDisplayMenu.java:34, src/client/java/minicraft/saveload/Load.java:965, src/client/java/minicraft/saveload/Load.java:1078
+Math.random()                                                   2  src/client/java/minicraft/saveload/Load.java:865, src/client/java/minicraft/util/MyUtils.java:21
+Runtime.addShutdownHook(Thread)                                 1  src/client/java/minicraft/util/TinylogLoggingProvider.java:87
+Set.stream()                                                    3  src/client/java/minicraft/item/Recipe.java:122, src/client/java/minicraft/item/Recipes.java:280, src/client/java/minicraft/screen/QuestsDisplay.java:370
+
+== Follow-on errors (caused by the gaps above, not gaps themselves): 2 ==
+invalid method reference                                        6  src/client/java/minicraft/item/Recipes.java:265, src/client/java/minicraft/screen/QuestsDisplay.java:270, src/client/java/minicraft/screen/QuestsDisplay.java:274 ...
+member of a game class whose supertype is missing               4  src/client/java/minicraft/screen/SkinDisplay.java:149, src/client/java/minicraft/screen/SkinDisplay.java:150, src/client/java/minicraft/screen/SkinDisplay.java:150 ...
+
+== Raw javac output ==
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\level\noise\LevelNoise.java:3: error: package java.security does not exist
+import java.security.InvalidParameterException;
+                    ^
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\screen\SignDisplayMenu.java:14: error: package java.util.stream does not exist
+import java.util.stream.Collectors;
+                       ^
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\core\io\FileHandler.java:12: error: cannot find symbol
+import java.net.URL;
+               ^
+  symbol:   class URL
+  location: package java.net
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\core\io\FileHandler.java:26: error: package java.util.stream does not exist
+import java.util.stream.Stream;
+                       ^
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\saveload\Load.java:97: error: package java.util.concurrent.atomic does not exist
+import java.util.concurrent.atomic.AtomicBoolean;
+                                  ^
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\saveload\Load.java:101: error: package java.util.stream does not exist
+import java.util.stream.Collectors;
+                       ^
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\screen\OnScreenKeyboardMenu.java:19: error: package java.util.stream does not exist
+import java.util.stream.Stream;
+                       ^
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\screen\OptionsWorldDisplay.java:17: error: cannot find symbol
+import java.util.concurrent.Executors;
+                           ^
+  symbol:   class Executors
+  location: package java.util.concurrent
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\screen\PopupDisplay.java:14: error: package java.util.stream does not exist
+import java.util.stream.Stream;
+                       ^
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\screen\QuestsDisplay.java:39: error: package java.util.stream does not exist
+import java.util.stream.Collectors;
+                       ^
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\screen\ResourcePackDisplay.java:42: error: cannot find symbol
+import java.nio.file.StandardWatchEventKinds;
+                    ^
+  symbol:   class StandardWatchEventKinds
+  location: package java.nio.file
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\screen\ResourcePackDisplay.java:43: error: cannot find symbol
+import java.nio.file.WatchEvent;
+                    ^
+  symbol:   class WatchEvent
+  location: package java.nio.file
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\screen\ResourcePackDisplay.java:44: error: cannot find symbol
+import java.nio.file.WatchService;
+                    ^
+  symbol:   class WatchService
+  location: package java.nio.file
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\screen\ResourcePackDisplay.java:51: error: package java.util.zip does not exist
+import java.util.zip.ZipEntry;
+                    ^
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\screen\ResourcePackDisplay.java:52: error: package java.util.zip does not exist
+import java.util.zip.ZipFile;
+                    ^
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\screen\ResourcePackDisplay.java:368: error: cannot find symbol
+		private ZipFile zipFile = null; // The zip file stream.
+		        ^
+  symbol:   class ZipFile
+  location: class ResourcePack
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\screen\ResourcePackDisplay.java:219: error: cannot find symbol
+		private WatchService watcher;
+		        ^
+  symbol:   class WatchService
+  location: class ResourcePackDisplay.WatcherThread
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\screen\SignDisplay.java:25: error: package java.util.stream does not exist
+import java.util.stream.Collectors;
+                       ^
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\screen\SkinDisplay.java:142: error: cannot find symbol
+		private WatchService watcher;
+		        ^
+  symbol:   class WatchService
+  location: class SkinDisplay.WatcherThread
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\level\noise\LevelNoise.java:28: error: cannot find symbol
+			throw new InvalidParameterException("LevelNoise must have at least 3 layers of noise available (temperature, height, humidity)");
+			          ^
+  symbol:   class InvalidParameterException
+  location: class LevelNoise
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\screen\SignDisplayMenu.java:34: error: cannot find symbol
+		setEntries(lines.stream().map(r -> new StringEntry(r, false)).collect(Collectors.toList()));
+		                                                                      ^
+  symbol:   variable Collectors
+  location: class SignDisplayMenu
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\screen\SignDisplayMenu.java:34: error: cannot find symbol
+		setEntries(lines.stream().map(r -> new StringEntry(r, false)).collect(Collectors.toList()));
+		                ^
+  symbol:   method stream()
+  location: variable lines of type List<String>
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\item\Recipe.java:122: error: cannot find symbol
+			"[" + String.join(";", costs.entrySet().stream().<CharSequence>map(e -> e.getKey() + ":" + e.getValue())::iterator) + "]";
+			                                       ^
+  symbol:   method stream()
+  location: interface Set<Entry<String,Integer>>
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\core\io\FileHandler.java:187: error: cannot find symbol
+		try (Stream<Path> paths = Files.walk(path)) {
+		     ^
+  symbol:   class Stream
+  location: class FileHandler
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\core\io\FileHandler.java:187: error: cannot find symbol
+		try (Stream<Path> paths = Files.walk(path)) {
+		                               ^
+  symbol:   method walk(Path)
+  location: class Files
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\core\io\FileHandler.java:205: error: cannot find symbol
+			URL fUrl = Game.class.getResource("/");
+			^
+  symbol:   class URL
+  location: class FileHandler
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\core\io\FileHandler.java:205: error: cannot find symbol
+			URL fUrl = Game.class.getResource("/");
+			                     ^
+  symbol:   method getResource(String)
+  location: variable class of type Class<Game>
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\core\io\FileHandler.java:212: error: cannot find symbol
+			Files.walk(folderPath)
+			     ^
+  symbol:   method walk(Path)
+  location: class Files
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\core\io\FileHandler.java:219: error: cannot find symbol
+				Files.walk(fPath)
+				     ^
+  symbol:   method walk(Path)
+  location: class Files
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\item\ClothingItem.java:50: error: cannot find symbol
+				ClothingItem lastClothing = (ClothingItem) getAllInstances().stream().filter(i -> i instanceof ClothingItem && ((ClothingItem) i).playerCol == player.shirtColor)
+				                                                            ^
+  symbol:   method stream()
+  location: class ArrayList<Item>
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\item\Recipes.java:265: error: cannot find symbol
+		String[] flowerNames = Arrays.stream(FlowerTile.FlowerVariant.values()).map(FlowerTile.FlowerVariant::getName).toArray(String[]::new);
+		                             ^
+  symbol:   method stream(FlowerVariant[])
+  location: class Arrays
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\item\Recipes.java:265: error: invalid method reference
+		String[] flowerNames = Arrays.stream(FlowerTile.FlowerVariant.values()).map(FlowerTile.FlowerVariant::getName).toArray(String[]::new);
+		                                                                                      ^
+  non-static method getName() cannot be referenced from a static context
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\item\Recipes.java:280: error: cannot find symbol
+					costs.keySet().stream().filter(c -> c.endsWith("DYE")).count() == 1)
+					              ^
+  symbol:   method stream()
+  location: interface Set<String>
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\item\Recipes.java:284: error: cannot find symbol
+					if (Arrays.stream(flowerNames).anyMatch(n -> n.equalsIgnoreCase(cost))) {
+					          ^
+  symbol:   method stream(String[])
+  location: class Arrays
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\item\Recipes.java:296: error: cannot find symbol
+			if (recipes.stream().anyMatch(r -> r != recipe && r.getProduct().equals(recipe.getProduct()))) {
+			           ^
+  symbol:   method stream()
+  location: variable recipes of type HashSet<Recipe>
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\item\Recipes.java:297: error: cannot find symbol
+				if (recipes.stream().anyMatch(r -> r != recipe && recipeNameFixer.apply(r).equals(recipeNameFixer.apply(recipe)))) {
+				           ^
+  symbol:   method stream()
+  location: variable recipes of type HashSet<Recipe>
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\saveload\Load.java:146: error: cannot find symbol
+			AtomicBoolean acted = new AtomicBoolean(false);
+			^
+  symbol:   class AtomicBoolean
+  location: class Load
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\saveload\Load.java:146: error: cannot find symbol
+			AtomicBoolean acted = new AtomicBoolean(false);
+			                          ^
+  symbol:   class AtomicBoolean
+  location: class Load
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\saveload\Load.java:147: error: cannot find symbol
+			AtomicBoolean continues = new AtomicBoolean(false);
+			^
+  symbol:   class AtomicBoolean
+  location: class Load
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\saveload\Load.java:147: error: cannot find symbol
+			AtomicBoolean continues = new AtomicBoolean(false);
+			                              ^
+  symbol:   class AtomicBoolean
+  location: class Load
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\saveload\Load.java:148: error: cannot find symbol
+			AtomicBoolean doBackup = new AtomicBoolean(false);
+			^
+  symbol:   class AtomicBoolean
+  location: class Load
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\saveload\Load.java:148: error: cannot find symbol
+			AtomicBoolean doBackup = new AtomicBoolean(false);
+			                             ^
+  symbol:   class AtomicBoolean
+  location: class Load
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\saveload\Load.java:227: error: cannot find symbol
+			AtomicBoolean acted = new AtomicBoolean(false);
+			^
+  symbol:   class AtomicBoolean
+  location: class Load
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\saveload\Load.java:227: error: cannot find symbol
+			AtomicBoolean acted = new AtomicBoolean(false);
+			                          ^
+  symbol:   class AtomicBoolean
+  location: class Load
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\saveload\Load.java:228: error: cannot find symbol
+			AtomicBoolean continues = new AtomicBoolean(false);
+			^
+  symbol:   class AtomicBoolean
+  location: class Load
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\saveload\Load.java:228: error: cannot find symbol
+			AtomicBoolean continues = new AtomicBoolean(false);
+			                              ^
+  symbol:   class AtomicBoolean
+  location: class Load
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\saveload\Load.java:229: error: cannot find symbol
+			AtomicBoolean doBackup = new AtomicBoolean(false);
+			^
+  symbol:   class AtomicBoolean
+  location: class Load
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\saveload\Load.java:229: error: cannot find symbol
+			AtomicBoolean doBackup = new AtomicBoolean(false);
+			                             ^
+  symbol:   class AtomicBoolean
+  location: class Load
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\saveload\Load.java:337: error: cannot find symbol
+				AtomicBoolean acted = new AtomicBoolean(false);
+				^
+  symbol:   class AtomicBoolean
+  location: class Load
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\saveload\Load.java:337: error: cannot find symbol
+				AtomicBoolean acted = new AtomicBoolean(false);
+				                          ^
+  symbol:   class AtomicBoolean
+  location: class Load
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\saveload\Load.java:338: error: cannot find symbol
+				AtomicBoolean continues = new AtomicBoolean(false);
+				^
+  symbol:   class AtomicBoolean
+  location: class Load
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\saveload\Load.java:338: error: cannot find symbol
+				AtomicBoolean continues = new AtomicBoolean(false);
+				                              ^
+  symbol:   class AtomicBoolean
+  location: class Load
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\saveload\Load.java:865: error: cannot find symbol
+						if (Math.random() < 0.8) // don't replace *all* the lapis
+						        ^
+  symbol:   method random()
+  location: class Math
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\saveload\Load.java:965: error: cannot find symbol
+						signObj.getJSONArray("lines").toList().stream().map(e -> (String) e).collect(Collectors.toList())
+						                                                                             ^
+  symbol:   variable Collectors
+  location: class Load
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\saveload\Load.java:965: error: cannot find symbol
+						signObj.getJSONArray("lines").toList().stream().map(e -> (String) e).collect(Collectors.toList())
+						                                      ^
+  symbol:   method stream()
+  location: interface List<Object>
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\saveload\Load.java:1078: error: cannot find symbol
+						signObj.getJSONArray("lines").toList().stream().map(e -> (String) e).collect(Collectors.toList())
+						                                                                             ^
+  symbol:   variable Collectors
+  location: class Load
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\saveload\Load.java:1078: error: cannot find symbol
+						signObj.getJSONArray("lines").toList().stream().map(e -> (String) e).collect(Collectors.toList())
+						                                      ^
+  symbol:   method stream()
+  location: interface List<Object>
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\screen\OnScreenKeyboardMenu.java:279: error: cannot find symbol
+			totalLength += keyWidth * 2 * (int) Stream.of(keys[r]).filter(k -> k == spaceBar).count();
+			                                    ^
+  symbol:   variable Stream
+  location: class OnScreenKeyboardMenu
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\screen\OnScreenKeyboardMenu.java:280: error: cannot find symbol
+			totalLength += keyWidth * (int) Stream.of(keys[r]).filter(k -> k == shiftKey).count();
+			                                ^
+  symbol:   variable Stream
+  location: class OnScreenKeyboardMenu
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\screen\OptionsWorldDisplay.java:37: error: cannot find symbol
+					Executors.newCachedThreadPool().submit(() -> {
+					^
+  symbol:   variable Executors
+  location: class OptionsWorldDisplay
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\screen\QuestsDisplay.java:270: error: cannot find symbol
+				series.getSeriesQuests().values().stream().filter(AdvancementElement::isCompleted).count()), Color.WHITE, false));
+				                                 ^
+  symbol:   method stream()
+  location: interface Collection<Quest>
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\screen\QuestsDisplay.java:270: error: invalid method reference
+				series.getSeriesQuests().values().stream().filter(AdvancementElement::isCompleted).count()), Color.WHITE, false));
+				                                                  ^
+  non-static method isCompleted() cannot be referenced from a static context
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\screen\QuestsDisplay.java:274: error: cannot find symbol
+				series.getSeriesQuests().values().stream().filter(AdvancementElement::isDisplayableAtStatus).count()), Color.WHITE, false));
+				                                 ^
+  symbol:   method stream()
+  location: interface Collection<Quest>
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\screen\QuestsDisplay.java:274: error: invalid method reference
+				series.getSeriesQuests().values().stream().filter(AdvancementElement::isDisplayableAtStatus).count()), Color.WHITE, false));
+				                                                  ^
+  non-static method isDisplayableAtStatus() cannot be referenced from a static context
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\screen\QuestsDisplay.java:371: error: cannot find symbol
+					.collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+					         ^
+  symbol:   variable Collectors
+  location: class SeriesQuestViewerDisplay
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\screen\QuestsDisplay.java:371: error: invalid method reference
+					.collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+					                                                ^
+  non-static method getValue() cannot be referenced from a static context
+  where V is a type-variable:
+    V extends Object declared in interface Entry
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\screen\QuestsDisplay.java:371: error: invalid method reference
+					.collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+					                             ^
+  non-static method getKey() cannot be referenced from a static context
+  where K is a type-variable:
+    K extends Object declared in interface Entry
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\screen\QuestsDisplay.java:370: error: cannot find symbol
+					.entrySet().stream().filter(entry -> entry.getValue().isUnlocked()) // Showing unlocked only.
+					           ^
+  symbol:   method stream()
+  location: interface Set<Entry<String,Quest>>
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\screen\QuestsDisplay.java:374: error: cannot find symbol
+					ArrayList<Quest> topRow = quests.values().stream().filter(quest -> quest.getParent() == null).collect(Collectors.toCollection(ArrayList::new));
+					                                                                                                      ^
+  symbol:   variable Collectors
+  location: class SeriesQuestViewerDisplay
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\screen\QuestsDisplay.java:374: error: cannot find symbol
+					ArrayList<Quest> topRow = quests.values().stream().filter(quest -> quest.getParent() == null).collect(Collectors.toCollection(ArrayList::new));
+					                                         ^
+  symbol:   method stream()
+  location: interface Collection<Quest>
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\screen\QuestsDisplay.java:392: error: cannot find symbol
+							ArrayList<Quest> questRow = questRowsList.stream().filter(quests1 -> quests1.contains(parent)).findAny().orElse(null);
+							                                         ^
+  symbol:   method stream()
+  location: variable questRowsList of type ArrayList<ArrayList<Quest>>
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\screen\QuestsDisplay.java:404: error: cannot find symbol
+					questsTree = questRowsList.stream().map(quests1 -> quests1.toArray(new Quest[0])).toArray(Quest[][]::new);
+					                          ^
+  symbol:   method stream()
+  location: variable questRowsList of type ArrayList<ArrayList<Quest>>
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\screen\ResourcePackDisplay.java:225: error: cannot find symbol
+				watcher = FileSystems.getDefault().newWatchService();
+				                                  ^
+  symbol:   method newWatchService()
+  location: class FileSystem
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\screen\ResourcePackDisplay.java:226: error: cannot find symbol
+				FOLDER_LOCATION.toPath().register(watcher, StandardWatchEventKinds.ENTRY_CREATE,
+				                                           ^
+  symbol:   variable StandardWatchEventKinds
+  location: class ResourcePackDisplay.WatcherThread
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\screen\ResourcePackDisplay.java:227: error: cannot find symbol
+					StandardWatchEventKinds.ENTRY_DELETE, StandardWatchEventKinds.ENTRY_MODIFY);
+					^
+  symbol:   variable StandardWatchEventKinds
+  location: class ResourcePackDisplay.WatcherThread
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\screen\ResourcePackDisplay.java:227: error: cannot find symbol
+					StandardWatchEventKinds.ENTRY_DELETE, StandardWatchEventKinds.ENTRY_MODIFY);
+					                                      ^
+  symbol:   variable StandardWatchEventKinds
+  location: class ResourcePackDisplay.WatcherThread
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\screen\ResourcePackDisplay.java:241: error: cannot find symbol
+					for (WatchEvent<?> event : watcher.take().pollEvents()) {
+					     ^
+  symbol:   class WatchEvent
+  location: class ResourcePackDisplay.WatcherThread
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\screen\ResourcePackDisplay.java:242: error: cannot find symbol
+						if (event.kind() == StandardWatchEventKinds.OVERFLOW)
+						                    ^
+  symbol:   variable StandardWatchEventKinds
+  location: class ResourcePackDisplay.WatcherThread
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\screen\ResourcePackDisplay.java:246: error: cannot find symbol
+						WatchEvent<Path> ev = (WatchEvent<Path>) event;
+						^
+  symbol:   class WatchEvent
+  location: class ResourcePackDisplay.WatcherThread
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\screen\ResourcePackDisplay.java:246: error: cannot find symbol
+						WatchEvent<Path> ev = (WatchEvent<Path>) event;
+						                       ^
+  symbol:   class WatchEvent
+  location: class ResourcePackDisplay.WatcherThread
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\screen\ResourcePackDisplay.java:441: error: cannot find symbol
+				zipFile = new ZipFile(new File(this.packRoot));
+				              ^
+  symbol:   class ZipFile
+  location: class ResourcePack
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\screen\ResourcePackDisplay.java:494: error: cannot find symbol
+				for (Enumeration<? extends ZipEntry> e = zipFile.entries(); e.hasMoreElements(); ) {
+				                           ^
+  symbol:   class ZipEntry
+  location: class ResourcePack
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\screen\ResourcePackDisplay.java:495: error: cannot find symbol
+					ZipEntry entry = e.nextElement();
+					^
+  symbol:   class ZipEntry
+  location: class ResourcePack
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\screen\ResourcePackDisplay.java:577: error: cannot find symbol
+				try (ZipFile zip = new ZipFile(file)) {
+				     ^
+  symbol:   class ZipFile
+  location: class ResourcePackDisplay
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\screen\ResourcePackDisplay.java:577: error: cannot find symbol
+				try (ZipFile zip = new ZipFile(file)) {
+				                       ^
+  symbol:   class ZipFile
+  location: class ResourcePackDisplay
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\screen\SignDisplay.java:93: error: cannot find symbol
+			return rows.stream().map(StringBuilder::toString).collect(Collectors.toList());
+			                                                          ^
+  symbol:   variable Collectors
+  location: class SignDisplay.SignEditor
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\screen\SignDisplay.java:93: error: cannot find symbol
+			return rows.stream().map(StringBuilder::toString).collect(Collectors.toList());
+			           ^
+  symbol:   method stream()
+  location: variable rows of type ArrayList<StringBuilder>
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\screen\SignDisplay.java:93: error: invalid method reference
+			return rows.stream().map(StringBuilder::toString).collect(Collectors.toList());
+			                         ^
+  non-static method toString() cannot be referenced from a static context
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\screen\SkinDisplay.java:148: error: cannot find symbol
+				watcher = FileSystems.getDefault().newWatchService();
+				                                  ^
+  symbol:   method newWatchService()
+  location: class FileSystem
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\screen\SkinDisplay.java:149: error: cannot find symbol
+				FOLDER_LOCATION.toPath().register(watcher, StandardWatchEventKinds.ENTRY_CREATE,
+				                                           ^
+  symbol:   variable StandardWatchEventKinds
+  location: class SkinDisplay.WatcherThread
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\screen\SkinDisplay.java:150: error: cannot find symbol
+					StandardWatchEventKinds.ENTRY_DELETE, StandardWatchEventKinds.ENTRY_MODIFY);
+					^
+  symbol:   variable StandardWatchEventKinds
+  location: class SkinDisplay.WatcherThread
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\screen\SkinDisplay.java:150: error: cannot find symbol
+					StandardWatchEventKinds.ENTRY_DELETE, StandardWatchEventKinds.ENTRY_MODIFY);
+					                                      ^
+  symbol:   variable StandardWatchEventKinds
+  location: class SkinDisplay.WatcherThread
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\screen\SkinDisplay.java:164: error: cannot find symbol
+					for (WatchEvent<?> event : watcher.take().pollEvents()) {
+					     ^
+  symbol:   class WatchEvent
+  location: class SkinDisplay.WatcherThread
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\screen\SkinDisplay.java:165: error: cannot find symbol
+						if (event.kind() == StandardWatchEventKinds.OVERFLOW)
+						                    ^
+  symbol:   variable StandardWatchEventKinds
+  location: class SkinDisplay.WatcherThread
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\screen\SkinDisplay.java:169: error: cannot find symbol
+						WatchEvent<Path> ev = (WatchEvent<Path>) event;
+						^
+  symbol:   class WatchEvent
+  location: class SkinDisplay.WatcherThread
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\screen\SkinDisplay.java:169: error: cannot find symbol
+						WatchEvent<Path> ev = (WatchEvent<Path>) event;
+						                       ^
+  symbol:   class WatchEvent
+  location: class SkinDisplay.WatcherThread
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\util\MyUtils.java:21: error: cannot find symbol
+		return (int) (Math.random() * (max - min + 1)) + min;
+		                  ^
+  symbol:   method random()
+  location: class Math
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\util\TinylogLoggingConfiguration.java:66: error: cannot find symbol
+			java.util.ServiceLoader.load(Writer.class); // Workaround for ProGuard (see issue #126)
+			         ^
+  symbol:   class ServiceLoader
+  location: package java.util
+E:\repos\minicraft-plus-lazyvm\src\client\java\minicraft\util\TinylogLoggingProvider.java:87: error: cannot find symbol
+			Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+			                    ^
+  symbol:   method addShutdownHook(Thread)
+  location: class Runtime
+Note: Some input files use or override a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+99 errors

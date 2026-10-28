@@ -1,0 +1,15 @@
+# Load the first saved world, then walk around. Steps are game ticks.
+wait 120
+press ENTER          # Play: "Load World / New World", since a world exists
+wait 30
+press ENTER          # Load World: the world list
+wait 30
+shot select.ppm
+press ENTER          # load the selected world
+wait 60
+shot loaded.ppm
+stats
+press D 40
+shot walk-load.ppm
+stats
+quit

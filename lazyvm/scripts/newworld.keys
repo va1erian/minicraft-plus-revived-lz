@@ -1,0 +1,26 @@
+# New world: Play, name it, create it, then walk around. Steps are game ticks.
+wait 120
+press ENTER          # Play
+wait 60
+type lazy            # world name
+wait 10
+shot gen-name.ppm
+press DOWN
+wait 5
+press DOWN
+wait 5
+shot gen-create.ppm
+press ENTER          # Create World; the world is built in one long tick
+wait 40
+shot loading.ppm
+wait 20
+shot world.ppm
+stats
+press D 30
+press S 30
+shot walk1.ppm
+press A 40
+press W 20
+shot walk2.ppm
+stats
+quit

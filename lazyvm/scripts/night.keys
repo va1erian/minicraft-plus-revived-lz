@@ -1,0 +1,25 @@
+# Load the first saved world, walk, then switch to night (debug keys F3-T-4)
+# to check the light overlay. Steps are game ticks.
+wait 120
+press ENTER          # Play: "Load World / New World", since a world exists
+wait 30
+press ENTER          # Load World: the world list
+wait 30
+press ENTER          # load the selected world
+wait 60
+shot day.ppm
+stats
+press D 40
+shot day-walk.ppm
+down F3
+down T
+press 4
+up T
+up F3
+wait 30
+shot night.ppm
+stats
+press W 40
+shot night-walk.ppm
+stats
+quit

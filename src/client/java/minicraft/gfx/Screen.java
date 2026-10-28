@@ -29,6 +29,7 @@ public class Screen {
 	private static final int BIT_MIRROR_Y = 0x02; // Binary: 10
 
 	private final int[] pixels;
+	private final int[] overlayScale = new int[256], overlayLift = new int[256]; // LAZYVM: see OverlayRendering.
 
 	private final ArrayDeque<Rendering> renderings = new ArrayDeque<>();
 	private final LightOverlay lightOverlay;
@@ -261,18 +262,22 @@ public class Screen {
 		@Override
 		public void render() {
 			double alpha = lightOverlay.getOverlayOpacity(currentLevel, darkFactor);
-			int[] overlay = lightOverlay.render(xa, ya);
 			// LAZYVM: the two AlphaComposite SRC_OVER passes, done per pixel: white at 2% opacity
 			// (lightening), then the overlay's black at its own opacity times alpha (shaders).
+			// For an overlay opacity o both fold into c' = (c * scale[o] + lift[o]) >> 16. When
+			// alpha is 0 (daytime) the black is invisible, so the overlay is not built at all.
+			int[] overlay = null;
+			if (alpha == 0) lightOverlay.lights.clear();
+			else overlay = lightOverlay.render(xa, ya);
+			for (int o = 0; o < 256; o++) {
+				double shade = 1 - o / 255.0 * alpha;
+				overlayScale[o] = (int) Math.round(65536 * (1 - .02) * shade);
+				overlayLift[o] = (int) Math.round(65536 * 255 * .02 * shade) + 32768; // + 1/2: rounds.
+			}
 			for (int i = 0; i < pixels.length; i++) {
-				double shade = 1 - overlay[i] / 255.0 * alpha;
-				double keep = (1 - .02) * shade;
-				int lift = (int) (255 * .02 * shade);
-				int c = pixels[i];
-				int r = (int) (((c >> 16) & 0xFF) * keep) + lift;
-				int g = (int) (((c >> 8) & 0xFF) * keep) + lift;
-				int b = (int) ((c & 0xFF) * keep) + lift;
-				pixels[i] = r << 16 | g << 8 | b;
+				int o = overlay == null ? 0 : overlay[i];
+				int s = overlayScale[o], l = overlayLift[o], c = pixels[i];
+				pixels[i] = ((c >> 16 & 0xFF) * s + l) >> 16 << 16 | ((c >> 8 & 0xFF) * s + l) >> 16 << 8 | ((c & 0xFF) * s + l) >> 16;
 			}
 		}
 	}

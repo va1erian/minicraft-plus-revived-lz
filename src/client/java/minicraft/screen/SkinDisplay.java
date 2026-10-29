@@ -20,7 +20,7 @@ import minicraft.screen.entry.SelectEntry;
 import minicraft.util.Logging;
 import org.jetbrains.annotations.NotNull;
 
-import minicraft.util.DestroyFailedException; // LAZYVM-GAP: LazyVM has no javax.security.auth.
+import minicraft.util.DestroyFailedException; // LAZYVM: the port's own type.
 
 import java.io.File;
 import java.io.FileInputStream;

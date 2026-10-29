@@ -27,7 +27,6 @@ S5-10 to S5-12 were added at the S5 checkpoint (lazyvm#20) and run after S6-01/0
 | `Math.random()` | 2 sites (`Load`, `MyUtils`) | added to `s5-followups` |
 | `System.setProperty` | 1 site: an AWT OpenGL flag, moot under lazy.gfx | added to `s5-followups` |
 | `java.security.InvalidParameterException` | `LevelNoise` (world generation) | added to `s5-followups` |
-| `javax.security.auth.Destroyable`, `DestroyFailedException` | supertype of `LinkedSprite`, so every sprite | added to `s5-followups`; D6 gains a `javax.security.auth` row for these two only (lazyvm#20) |
 | `java.math` (`BigInteger`, `BigDecimal`, `MathContext`) | every JSON number through org.json (the port ships its own org.json for this); the game's own `BigDecimal` loop was AWT lighting code that lazy.gfx replaced | S5-10, with `Scanner`'s Big readers (lazyvm#20) |
 | `java.util.zip` (`ZipFile`, `ZipEntry`) | resource packs in `.zip` files | S5-11, over the VM's `miniz_oxide` (lazyvm#20) |
 | `java.net.URL`, `MalformedURLException`, `URI.toURL()`, `Class.getResource` | resource paths at start-up, `file:` and `jar:` only | S5-12: `file:` and `jar:` URLs, `getResource` and `getResources`, split out of S7-02 (lazyvm#20) |
@@ -56,7 +55,6 @@ javax.imageio, which lazy.gfx replaces:
   `Callable`/`TimeUnit` (`ConcurrentHashMap`, `ExecutorService`,
   `Executors`, `Future`, `atomic.AtomicBoolean`,
   `locks.ReentrantReadWriteLock`), `java.lang.Thread.UncaughtExceptionHandler`,
-  `javax.security.auth.Destroyable` and `DestroyFailedException`,
   `java.security.InvalidParameterException`.
 - Methods absent: `Collection.stream()` (so `List`, `Set`, `ArrayList`,
   `HashSet` too), `Arrays.stream`, `String.chars()`, `BufferedReader.lines()`,
@@ -102,9 +100,9 @@ observed for these.
   preferences save).
 - `Files.walk` and `java.util.stream`: `ResourcePackDisplay.getFiles` lists
   a pack directory with `File.listFiles`.
-- `javax.security.auth.Destroyable` / `DestroyFailedException`: the
-  superinterface of `SpriteLinker.LinkedSprite`, so every sprite. Game-side
-  stand-ins in `minicraft.util`.
+- `Destroyable` / `DestroyFailedException`: the superinterface of
+  `SpriteLinker.LinkedSprite`, so every sprite. The port has its own in
+  `minicraft.util`, since LazyVM leaves `javax.*` out (owner, 2026-10-29).
 - `java.util.concurrent.ConcurrentHashMap.newKeySet()` and
   `Executors.newCachedThreadPool()`: `AdvancementElement.AdvancementTrigger`,
   ticked every game tick. A plain `HashSet` and inline trigger calls.

@@ -1,8 +1,8 @@
 package minicraft.util;
 
 /**
- * LAZYVM-GAP: stands in for javax.security.auth.Destroyable, which LazyVM does not provide.
- * The game uses it only to release linked sprites; the contract is the same.
+ * LAZYVM: the port's own interface for things that can be released; the game uses it to
+ * unlink sprites from the SpriteLinker.
  */
 public interface Destroyable {
 	default void destroy() throws DestroyFailedException {

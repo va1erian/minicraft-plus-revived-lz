@@ -1,6 +1,6 @@
 package minicraft.util;
 
-/** LAZYVM-GAP: stands in for javax.security.auth.DestroyFailedException (see {@link Destroyable}). */
+/** LAZYVM: the port's own exception, for a {@link Destroyable} that cannot be released. */
 public class DestroyFailedException extends Exception {
 	public DestroyFailedException() {
 	}

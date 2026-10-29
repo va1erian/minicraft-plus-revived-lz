@@ -9,7 +9,7 @@ import minicraft.gfx.SpriteLinker.LinkedSprite;
 import minicraft.gfx.SpriteLinker.SpriteType;
 import minicraft.util.Logging;
 
-import minicraft.util.DestroyFailedException; // LAZYVM-GAP: LazyVM has no javax.security.auth.
+import minicraft.util.DestroyFailedException; // LAZYVM: the port's own type.
 
 import java.util.List;
 

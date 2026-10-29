@@ -1,5 +1,6 @@
 package minicraft.gfx;
 
+import lazy.gfx.Surface;
 import minicraft.core.Renderer;
 import minicraft.core.Updater;
 import minicraft.gfx.SpriteLinker.LinkedSprite;
@@ -8,8 +9,10 @@ import org.intellij.lang.annotations.MagicConstant;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class Screen {
@@ -29,6 +32,7 @@ public class Screen {
 	private static final int BIT_MIRROR_Y = 0x02; // Binary: 10
 
 	private final int[] pixels;
+	private final Surface surface; // LAZYVM: draws the renderings below natively (lazy.gfx).
 	private final int[] overlayScale = new int[256], overlayLift = new int[256]; // LAZYVM: see OverlayRendering.
 
 	private final ArrayDeque<Rendering> renderings = new ArrayDeque<>();
@@ -46,12 +50,21 @@ public class Screen {
 	public Screen(int[] pixels) {
 		/// Screen width and height are determined by the actual game window size, meaning the screen is only as big as the window.buffer = new BufferedImage(Screen.w, Screen.h);
 		this.pixels = pixels;
+		surface = new Surface(w, h, pixels);
 		lightOverlay = new LightOverlay();
 	}
 
 	private interface Rendering {
 		/** Invoked by {@link Renderer#render()}. */
 		void render();
+
+		/**
+		 * LAZYVM: the same, drawn by the Java pixel loops that lazy.gfx.Surface replaced. Only
+		 * the debug check ({@link #drawChecked}) calls it.
+		 */
+		default void renderLoop() {
+			render();
+		}
 	}
 
 	/** LAZYVM: fills the part of a rectangle that lies on the screen, like Graphics.fillRect. */
@@ -83,6 +96,11 @@ public class Screen {
 
 		@Override
 		public void render() {
+			surface.clear(color & 0xFFFFFF);
+		}
+
+		@Override
+		public void renderLoop() {
 			fill(0, 0, Screen.w, Screen.h, color);
 		}
 	}
@@ -90,7 +108,12 @@ public class Screen {
 	private class PlainClearRendering extends ClearRendering {
 		@Override
 		public void render() {
-			fill(0, 0, Screen.w, Screen.h, 0); // An image's Graphics clears to black.
+			surface.clear(0); // An image's Graphics clears to black.
+		}
+
+		@Override
+		public void renderLoop() {
+			fill(0, 0, Screen.w, Screen.h, 0);
 		}
 	}
 
@@ -114,8 +137,23 @@ public class Screen {
 			this.sheet = sheet;
 		}
 
+		/**
+		 * LAZYVM: one native blit. The sheet keeps Minicraft's 25-bit pixels (alpha 1 is
+		 * opaque), so ALPHA_TEST copies them as upstream did, and KEY finds its white.
+		 */
 		@Override
 		public void render() {
+			int flags = Surface.ALPHA_TEST;
+			if ((mirrors & BIT_MIRROR_X) > 0) flags |= Surface.FLIP_X;
+			if ((mirrors & BIT_MIRROR_Y) > 0) flags |= Surface.FLIP_Y;
+			if (whiteTint != -1) flags |= Surface.KEY;
+			if (fullBright || color != 0) flags |= Surface.SOLID;
+			surface.blit(sheet.surface, xt, yt, tw, th, xp, yp, flags,
+				0x1FFFFFF, Color.upgrade(whiteTint), fullBright ? Color.WHITE : color);
+		}
+
+		@Override
+		public void renderLoop() {
 			int toffs = xt + yt * sheet.width;
 			// Determines if the image should be mirrored...
 			boolean mirrorX = (mirrors & BIT_MIRROR_X) > 0; // Horizontally.
@@ -165,6 +203,11 @@ public class Screen {
 
 		@Override
 		public void render() {
+			surface.fill(xp, yp, w, h, 0xFF000000 | color);
+		}
+
+		@Override
+		public void renderLoop() {
 			fill(xp, yp, w, h, color);
 		}
 	}
@@ -183,6 +226,11 @@ public class Screen {
 		@Override
 		public void render() {
 			// Like Graphics.drawRect, the outline covers w + 1 by h + 1 pixels.
+			surface.rect(xp, yp, w + 1, h + 1, 0xFF000000 | color);
+		}
+
+		@Override
+		public void renderLoop() {
 			fill(xp, yp, w + 1, 1, color);
 			fill(xp, yp + h, w + 1, 1, color);
 			fill(xp, yp, 1, h + 1, color);
@@ -203,7 +251,11 @@ public class Screen {
 
 		@Override
 		public void render() {
-			// Bresenham's line, both end points included, like Graphics.drawLine.
+			surface.line(x0, y0, x1, y1, 0xFF000000 | color); // Bresenham's pixels, like Graphics.drawLine.
+		}
+
+		@Override
+		public void renderLoop() {
 			int dx = Math.abs(x1 - x0), dy = -Math.abs(y1 - y0);
 			int sx = x0 < x1 ? 1 : -1, sy = y0 < y1 ? 1 : -1;
 			int err = dx + dy, x = x0, y = y0;
@@ -251,6 +303,9 @@ public class Screen {
 	private class OverlayRendering implements Rendering {
 		private final int currentLevel, xa, ya;
 		private final double darkFactor;
+		private boolean prepared;
+		private double alpha;
+		private int[] overlay; // The black's opacity per pixel, or null while it is invisible.
 
 		private OverlayRendering(int currentLevel, int xa, int ya, double darkFactor) {
 			this.currentLevel = currentLevel;
@@ -259,16 +314,31 @@ public class Screen {
 			this.darkFactor = darkFactor;
 		}
 
+		/** LAZYVM: works the overlay out once; building it uses up the frame's lights. */
+		private void prepare() {
+			if (prepared) return;
+			prepared = true;
+			alpha = lightOverlay.getOverlayOpacity(currentLevel, darkFactor);
+			if (alpha == 0) lightOverlay.lights.clear(); // Daytime: the black is invisible.
+			else overlay = lightOverlay.render(xa, ya);
+		}
+
+		/**
+		 * LAZYVM: upstream's two AlphaComposite SRC_OVER passes, drawn natively: white at 2%
+		 * opacity (lightening; 5/255 here), then the overlay's black at its own opacity times
+		 * alpha (shaders).
+		 */
 		@Override
 		public void render() {
-			double alpha = lightOverlay.getOverlayOpacity(currentLevel, darkFactor);
-			// LAZYVM: the two AlphaComposite SRC_OVER passes, done per pixel: white at 2% opacity
-			// (lightening), then the overlay's black at its own opacity times alpha (shaders).
-			// For an overlay opacity o both fold into c' = (c * scale[o] + lift[o]) >> 16. When
-			// alpha is 0 (daytime) the black is invisible, so the overlay is not built at all.
-			int[] overlay = null;
-			if (alpha == 0) lightOverlay.lights.clear();
-			else overlay = lightOverlay.render(xa, ya);
+			prepare();
+			surface.fill(0, 0, w, h, 0x05FFFFFF);
+			if (overlay != null) surface.blendMask(overlay, 0x000000, (int) Math.round(alpha * 255));
+		}
+
+		/** The same in one pass: for an overlay opacity o, c' = (c * scale[o] + lift[o]) >> 16. */
+		@Override
+		public void renderLoop() {
+			prepare();
 			for (int o = 0; o < 256; o++) {
 				double shade = 1 - o / 255.0 * alpha;
 				overlayScale[o] = (int) Math.round(65536 * (1 - .02) * shade);
@@ -305,9 +375,73 @@ public class Screen {
 			rendering = renderings.poll(); // This can prevent redundant renderings operated.
 			if (rendering == null) return;
 		} while (rendering != lastClearRendering);
+		if (DRAW_CHECK) {
+			drawChecked(rendering);
+			return;
+		}
 		do { // Renders all renderings until all are operated.
-			rendering.render();
+			if (LOOPS) rendering.renderLoop();
+			else rendering.render();
 		} while ((rendering = renderings.poll()) != null);
+	}
+
+	// LAZYVM: -Dminicraft.lazyvm.drawcheck=true draws every frame twice, by the old pixel loops
+	// and by lazy.gfx, and prints how far apart they are every 10 frames (see drawChecked).
+	// LAZYVM: -Dminicraft.lazyvm.loops=true draws by the old pixel loops, to time them.
+	private static final boolean LOOPS = "true".equals(System.getProperty("minicraft.lazyvm.loops"));
+	private static final boolean DRAW_CHECK = "true".equals(System.getProperty("minicraft.lazyvm.drawcheck"));
+	private int[] checkFrame, checkBeforeOverlay;
+	private long checkFrames, exactPixelsOff, blendFramesOff, blendPixelsOff;
+	private int blendMaxDelta;
+
+	/**
+	 * LAZYVM: draws one frame by the loops, keeps it, draws it again by lazy.gfx, and compares
+	 * the colours (the alpha byte is never shown). Up to the light overlay the two must match
+	 * pixel for pixel. The overlay rounds differently (one pass of tables against two native
+	 * blends), so whole frames with an overlay are compared by how far they differ.
+	 */
+	private void drawChecked(Rendering first) {
+		List<Rendering> frame = new ArrayList<>();
+		for (Rendering r = first; r != null; r = renderings.poll()) frame.add(r);
+		int overlayAt = frame.size();
+		for (int i = frame.size() - 1; i >= 0; i--) if (frame.get(i) instanceof OverlayRendering) overlayAt = i;
+		if (checkFrame == null) {
+			checkFrame = new int[pixels.length];
+			checkBeforeOverlay = new int[pixels.length];
+		}
+		for (int i = 0; i < frame.size(); i++) {
+			if (i == overlayAt) System.arraycopy(pixels, 0, checkBeforeOverlay, 0, pixels.length);
+			frame.get(i).renderLoop();
+		}
+		System.arraycopy(pixels, 0, checkFrame, 0, pixels.length);
+		if (overlayAt == frame.size()) System.arraycopy(pixels, 0, checkBeforeOverlay, 0, pixels.length);
+		for (int i = 0; i < frame.size(); i++) {
+			if (i == overlayAt) exactPixelsOff += differing(checkBeforeOverlay, false);
+			frame.get(i).render();
+		}
+		if (overlayAt == frame.size()) exactPixelsOff += differing(checkBeforeOverlay, false);
+		else {
+			long off = differing(checkFrame, true);
+			if (off > 0) blendFramesOff++;
+			blendPixelsOff += off;
+		}
+		if (++checkFrames % 10 == 0)
+			System.out.println("[LAZYVM] drawcheck: " + checkFrames + " frames; " + exactPixelsOff
+				+ " pixels differ where they must match; " + blendFramesOff + " frames with an overlay differ in "
+				+ blendPixelsOff + " pixels, by at most " + blendMaxDelta + " per channel");
+	}
+
+	/** Pixels whose colour differs from {@code ref}; {@code track} keeps the largest channel gap. */
+	private long differing(int[] ref, boolean track) {
+		long n = 0;
+		for (int i = 0; i < pixels.length; i++) {
+			int a = pixels[i], b = ref[i];
+			if (((a ^ b) & 0xFFFFFF) == 0) continue;
+			n++;
+			for (int sh = 0; track && sh < 24; sh += 8)
+				blendMaxDelta = Math.max(blendMaxDelta, Math.abs((a >> sh & 0xFF) - (b >> sh & 0xFF)));
+		}
+		return n;
 	}
 
 	public void render(int xp, int yp, int xt, int yt, int bits, MinicraftImage sheet) {
@@ -400,8 +534,11 @@ public class Screen {
 	public void render(int xp, int yp, int xt, int yt, int tw, int th, MinicraftImage sheet, int mirrors, int whiteTint, boolean fullBright, int color) {
 		if (sheet == null) return; // Verifying that sheet is not null.
 
-		// Validation check
-		if (xt + tw > sheet.width && yt + th > sheet.height) {
+		// Validation check. LAZYVM: lazy.gfx refuses a source rectangle outside the sheet, where
+		// upstream read on into the next rows; so either side out is enough, not both.
+		if (xt < 0 || yt < 0 || xt + tw > sheet.width || yt + th > sheet.height) {
+			if (DRAW_CHECK && !(xt + tw > sheet.width && yt + th > sheet.height))
+				System.out.println("[LAZYVM] drawcheck: sprite " + xt + "," + yt + " " + tw + "x" + th + " outside its sheet");
 			render(xp, yp, 0, 0, mirrors, Renderer.spriteLinker.missingSheet(SpriteType.Item));
 			return;
 		}

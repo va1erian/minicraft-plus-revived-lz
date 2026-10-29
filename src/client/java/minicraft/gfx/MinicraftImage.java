@@ -1,6 +1,7 @@
 package minicraft.gfx;
 
 import lazy.gfx.Image;
+import lazy.gfx.Surface;
 import minicraft.gfx.SpriteLinker.LinkedSprite;
 import minicraft.util.Logging;
 import org.jetbrains.annotations.NotNull;
@@ -21,6 +22,7 @@ public class MinicraftImage {
 
 	public final int width, height; // Width and height of the sprite sheet
 	public final int[] pixels; // Integer array of the image's pixels
+	public final Surface surface; // LAZYVM: the pixels, for drawing with lazy.gfx.
 
 	/**
 	 * Initializes a {@code MinicraftImage} instance from the provided size.
@@ -36,6 +38,7 @@ public class MinicraftImage {
 		this.width = width;
 		this.height = height;
 		pixels = new int[width * height];
+		surface = new Surface(width, height, pixels);
 	}
 
 	/**
@@ -95,6 +98,7 @@ public class MinicraftImage {
 			// Uses 25 bits to store everything (8 for red, 8 for green, 8 for blue, and 1 for alpha)
 			pixels[i] = (transparent << 24) + red + green + blue;
 		}
+		surface = new Surface(width, height, pixels);
 	}
 
 	/**

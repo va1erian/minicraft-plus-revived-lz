@@ -163,6 +163,22 @@ on the first day only; the rest is game code running in the interpreter.
 Walking into a new chunk ring should bring back the multi-second ticks
 (from the code; the scripted walks stayed inside the loaded chunks).
 
+Drawing through `lazy.gfx.Surface` (S9-00b): `Screen`'s renderings now make
+one native call each (a sprite is one `blit`; the overlay is a `fill` and a
+`blendMask`). Same build and `scripts/night.keys`, headless, old loops
+(`-Dminicraft.lazyvm.loops=true`) against `Surface`:
+
+| Phase | Loops | Surface |
+|---|---|---|
+| Title and menus | 10 to 20 ms/frame | 2 to 6 ms/frame |
+| Walking, day and night | 174 to 243 ms/frame | 68 to 110 ms/frame |
+
+Ticks are unchanged (game code). `-Dminicraft.lazyvm.drawcheck=true` draws
+every frame both ways and compares them: over the title screen and the
+whole night script (240 frames), 0 pixels differ before the light overlay,
+and with it 5 night frames differ in 6745 pixels by 1 in a channel (the
+table pass rounds once, the two native blends twice).
+
 ## lazy.gfx: what the port needed and did not find
 
 Not LazyVM gaps in the java.* sense, but notes for the `lazy.gfx` API.

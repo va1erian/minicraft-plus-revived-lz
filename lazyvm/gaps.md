@@ -16,23 +16,24 @@ last made against LazyVM main `f81fa03` (2026-10-29, after S5).
 
 S5 is complete, but only #17 closed anything the game calls: the upstream
 report lost exactly `String.toUpperCase(Locale)` and `toLowerCase(Locale)`
-(668 errors, from 675). Each remaining gap, with the plan item that owns it:
+(668 errors, from 675). Each remaining gap, with the plan item that owns it.
+S5-10 to S5-12 were added at the S5 checkpoint (lazyvm#20) and run after S6-01/02:
 
 | Gap | Where the game needs it | LazyVM |
 |---|---|---|
 | `String.toUpperCase`/`toLowerCase(Locale)` | key mapping every tick, world names, menu search | landed (#17); the port uses them again |
 | `Boolean.getBoolean`, `System.getenv` | start-up | branch `s5-followups` (b480bdc), not merged |
 | `Locale.forLanguageTag`/`toLanguageTag` | loading a language, saving preferences | in `s5-followups`' scope, not written yet |
-| `Math.random()` | 2 sites (`Load`, `MyUtils`) | no item; small |
-| `System.setProperty` | 1 site: an AWT OpenGL flag, moot under lazy.gfx | no item; small, low value |
-| `java.security.InvalidParameterException` | `LevelNoise` (world generation) | no item; one small class |
-| `javax.security.auth.Destroyable`, `DestroyFailedException` | supertype of `LinkedSprite`, so every sprite | no item; an interface and an exception |
-| `java.math` (`BigInteger`, `BigDecimal`, `MathContext`) | every JSON number through org.json (the port ships its own org.json for this); the game's own `BigDecimal` loop was AWT lighting code that lazy.gfx replaced | no item (S5-04 notes that `Scanner`'s readers wait for it) |
-| `java.util.zip` (`ZipFile`, `ZipEntry`) | resource packs in `.zip` files | no item; the VM already inflates jars (S3-01, `miniz_oxide`) |
-| `java.net.URL`, `MalformedURLException`, `URI.toURL()`, `Class.getResource` | resource paths at start-up, `file:` and `jar:` only | S7-02 (`URL`); `getResource` returns a `URL` |
+| `Math.random()` | 2 sites (`Load`, `MyUtils`) | added to `s5-followups` |
+| `System.setProperty` | 1 site: an AWT OpenGL flag, moot under lazy.gfx | added to `s5-followups` |
+| `java.security.InvalidParameterException` | `LevelNoise` (world generation) | added to `s5-followups` |
+| `javax.security.auth.Destroyable`, `DestroyFailedException` | supertype of `LinkedSprite`, so every sprite | added to `s5-followups`; D6 gains a `javax.security.auth` row for these two only (lazyvm#20) |
+| `java.math` (`BigInteger`, `BigDecimal`, `MathContext`) | every JSON number through org.json (the port ships its own org.json for this); the game's own `BigDecimal` loop was AWT lighting code that lazy.gfx replaced | S5-10, with `Scanner`'s Big readers (lazyvm#20) |
+| `java.util.zip` (`ZipFile`, `ZipEntry`) | resource packs in `.zip` files | S5-11, over the VM's `miniz_oxide` (lazyvm#20) |
+| `java.net.URL`, `MalformedURLException`, `URI.toURL()`, `Class.getResource` | resource paths at start-up, `file:` and `jar:` only | S5-12: `file:` and `jar:` URLs, `getResource` and `getResources`, split out of S7-02 (lazyvm#20) |
 | `Thread.start()` | update check; tinylog's writer thread | S6-01 (branch `s6-threads`) |
 | `Thread.setDefaultUncaughtExceptionHandler`, `Thread.UncaughtExceptionHandler` | first line of `main` | S6-01 |
-| `Runtime.addShutdownHook` | 1 site: tinylog's provider, flushing on exit | not named in S6-01 |
+| `Runtime.addShutdownHook` | 1 site: tinylog's provider, flushing on exit | added to S6-01 on `s6-threads` |
 | `java.util.concurrent.atomic.AtomicBoolean` | 17 sites, mostly loading saves | S6-03 |
 | `ConcurrentHashMap`, `ExecutorService`, `Executors`, `Future`, `locks.ReentrantReadWriteLock` | advancement triggers every tick; tinylog cannot start without the lock | S6-04 |
 | streams: `Collection.stream()` and the rest, `Arrays.stream`, `Stream`, `IntStream`, `Collectors`, `String.chars()`, `BufferedReader.lines()`, `Files.walk` | several every tick (the port loops instead, `StreamGap`) | S11-01 (S5-06 defers `Files.walk`/`lines` to S11) |

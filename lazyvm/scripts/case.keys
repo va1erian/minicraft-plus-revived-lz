@@ -1,0 +1,14 @@
+# Case mapping with a locale: the world-name check in WorldGenDisplay lower-cases the
+# name with the game's locale, so "LAZY" names the world "lazy" from newworld.keys and
+# shows in red. Steps are game ticks.
+wait 120
+press ENTER          # Play: "Load World / New World", since a world exists
+wait 30
+press DOWN
+wait 5
+press ENTER          # New World
+wait 30
+type LAZY
+wait 10
+shot case-name.ppm
+quit

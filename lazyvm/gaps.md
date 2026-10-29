@@ -32,8 +32,8 @@ javax.imageio, which lazy.gfx replaces:
   `HashSet` too), `Arrays.stream`, `String.chars()`, `BufferedReader.lines()`,
   `Files.walk`, `FileSystem.newWatchService()`, `Class.getResource`,
   `URI.toURL()`, `Locale.forLanguageTag`, `Locale.toLanguageTag`,
-  `String.toLowerCase(Locale)`, `String.toUpperCase(Locale)`,
-  `Math.random()`, `System.getenv(String)`, `System.setProperty`,
+  `String.toLowerCase(Locale)` and `String.toUpperCase(Locale)` (added
+  since, LazyVM #17), `Math.random()`, `System.getenv(String)`, `System.setProperty`,
   `Runtime.addShutdownHook`, `Thread.setDefaultUncaughtExceptionHandler`,
   `Boolean.getBoolean`.
 - Present but unsupported: `Thread.start()` throws
@@ -52,7 +52,7 @@ Each entry was hit, in this order, by `python lazyvm/run.py --headless`.
 | 4 | `NoSuchMethodError: java.lang.System.getenv(String)` | `FileHandler.<clinit>` (`System.getenv("APPDATA")`) | once at startup | `user.home` + `/AppData/Roaming` (the run script passes `--savedir` anyway) |
 | 5 | `NoClassDefFoundError: java/math/BigInteger` | `org.json.JSONObject.stringToNumber` (JSONObject.java:2273), first from `ResourcePackDisplay.loadPackFromStream` reading `pack.json` | every JSON number: pack metadata, localization, achievements, quests, recipes, saves | `lazyvm/shims/org/json`: a small org.json written for the port (Integer/Long/Double numbers); `json-20220320.jar` is left off the class path |
 | 6 | `NoSuchMethodError: java.io.BufferedReader.lines()` | `AchievementsDisplay.<clinit>` | once at startup | `ResourcePackDisplay.readStringFromInputStream` (now a `readLine` loop, it used `lines()` too) |
-| 7 | `NoSuchMethodError: java.lang.String.toUpperCase(Locale)` | `InputHandler.getMappedKey` | several times every tick | `toUpperCase()`; same for `toLowerCase(Locale)` in `Menu` (search) and `WorldGenDisplay` (world name, hit every frame of that screen) |
+| 7 | `NoSuchMethodError: java.lang.String.toUpperCase(Locale)` | `InputHandler.getMappedKey` | several times every tick | Fixed in LazyVM #17; the upstream calls are back. The port used `toUpperCase()` there, and `toLowerCase()` in `Menu` (search) and `WorldGenDisplay` (world name, hit every frame of that screen) |
 | 8 | `NoSuchMethodError: java.util.HashSet.stream()` | `InputHandler$CompoundedKey.isDown` | several times every tick | `minicraft.util.StreamGap` loops (`anyMatch`, `allMatch`, `count`, `filter`, `first`, `map`); applied to every stream on the play path (list below) |
 | 9 | `UnsupportedOperationException: threads arrive in stage S6` from `Thread.start()` | `Network.findLatestVersion` (from `TitleDisplay.init`) | once per title screen | runs inline; the offline Unirest stand-in fails at once |
 | 10 | `NoClassDefFoundError: java/time/LocalDateTime` | `TitleDisplay.init` (December 19 splash) | once per title screen | `minicraft.util.Clock`: the UTC date from `currentTimeMillis` |

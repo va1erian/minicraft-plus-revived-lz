@@ -420,7 +420,7 @@ public class InputHandler { // LAZYVM: fed by Initializer's lazy.gfx event loop,
 	/// THIS is pretty much the only way you want to be interfacing with this class; it has all the auto-create and protection functions and such built-in.
 	// For mapped keys
 	public Key getMappedKey(String keyText) {
-		keyText = keyText.toUpperCase(); // Prevent errors due to improper "casing" LAZYVM-GAP: no String.toUpperCase(Locale).
+		keyText = keyText.toUpperCase(java.util.Locale.ENGLISH); // Prevent errors due to improper "casing"
 		synchronized ("lock") {
 			// If the passed-in key equals one in keymap, then replace it with its match, a key in keyboard.
 			if (keymap.containsKey(keyText)) // If false, we assume that keytext is a physical key.
@@ -455,7 +455,7 @@ public class InputHandler { // LAZYVM: fed by Initializer's lazy.gfx event loop,
 		// If the passed-in key is blank, or null, then return null.
 		if (keytext == null || keytext.isEmpty()) return keyMask;
 
-		keytext = keytext.toUpperCase(); // Prevent errors due to improper "casing" LAZYVM-GAP: no String.toUpperCase(Locale).
+		keytext = keytext.toUpperCase(java.util.Locale.ENGLISH); // Prevent errors due to improper "casing"
 
 		if (keytext.contains("|")) {
 			/// Multiple key possibilities exist for this action; so, combine the results of each one!
@@ -707,12 +707,12 @@ public class InputHandler { // LAZYVM: fed by Initializer's lazy.gfx event loop,
 	}
 
 	public boolean inputPressed(String mapping) {
-		mapping = mapping.toUpperCase(); // LAZYVM-GAP: no String.toUpperCase(Locale).
+		mapping = mapping.toUpperCase(java.util.Locale.ENGLISH);
 		return getMappedKey(mapping).isClicked() || (buttonMap.containsKey(mapping) && buttonPressed(buttonMap.get(mapping)));
 	}
 
 	public boolean inputDown(String mapping) {
-		mapping = mapping.toUpperCase(); // LAZYVM-GAP: no String.toUpperCase(Locale).
+		mapping = mapping.toUpperCase(java.util.Locale.ENGLISH);
 		return getMappedKey(mapping).isDown() || (buttonMap.containsKey(mapping) && buttonDown(buttonMap.get(mapping)));
 	}
 

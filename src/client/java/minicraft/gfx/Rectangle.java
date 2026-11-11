@@ -87,11 +87,13 @@ public class Rectangle {
 		return p;
 	}
 
+	// LAZYVM-PERF: the getters written out (no class extends Rectangle): every entity tests
+	// every nearby one each tick, and on LazyVM, an interpreter, each getter is a call.
 	public boolean intersects(Rectangle other) {
-		return !(getLeft() > other.getRight() // Left side is past the other right side
-			|| other.getLeft() > getRight() // Other left side is past the right side
-			|| getBottom() < other.getTop() // Other top is below the bottom
-			|| other.getBottom() < getTop() // Top is below the other bottom
+		return !(x > other.x + other.w // Left side is past the other right side
+			|| other.x > x + w // Other left side is past the right side
+			|| y + h < other.y // Other top is below the bottom
+			|| other.y + other.h < y // Top is below the other bottom
 		);
 	}
 

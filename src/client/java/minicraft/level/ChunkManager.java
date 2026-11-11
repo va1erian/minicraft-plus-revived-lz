@@ -15,6 +15,9 @@ import minicraft.level.tile.Tiles;
 public class ChunkManager {
 
 	public static final int CHUNK_SIZE = 64;
+	// LAZYVM-PERF: CHUNK_SIZE is a power of two, so floorDiv and floorMod by it are a shift and a
+	// mask; every tile read did both through Math calls, which cost a frame each on LazyVM.
+	private static final int CHUNK_SHIFT = Integer.numberOfTrailingZeros(CHUNK_SIZE);
 	public static final int CHUNK_STAGE_NONE = 0;
 	public static final int CHUNK_STAGE_PRIMED_NOISE = 1;
 	public static final int CHUNK_STAGE_ASSIGNED_BIOMES = 2;
@@ -70,7 +73,7 @@ public class ChunkManager {
 	 * Return the chunk  in which the tileX and tileY land
 	 */
 	private Chunk getTileChunk(int tileX, int tileY) {
-		int cX = Math.floorDiv(tileX, CHUNK_SIZE), cY = Math.floorDiv(tileY, CHUNK_SIZE);
+		int cX = tileX >> CHUNK_SHIFT, cY = tileY >> CHUNK_SHIFT; // LAZYVM-PERF: floorDiv
 		return getChunk(cX, cY);
 	}
 
@@ -142,7 +145,7 @@ public class ChunkManager {
 		}
 
 		public TileDat getTileDat(int tileX, int tileY) {
-			int index = Math.floorMod(tileX, CHUNK_SIZE) + Math.floorMod(tileY, CHUNK_SIZE) * CHUNK_SIZE;
+			int index = (tileX & (CHUNK_SIZE - 1)) + (tileY & (CHUNK_SIZE - 1)) * CHUNK_SIZE; // LAZYVM-PERF: floorMod
 			if(tiles[index] == null)
 				tiles[index] = new TileDat((short)0);
 			return tiles[index];

@@ -129,6 +129,7 @@ public final class Tiles {
 	static void add(int id, Tile tile) {
 		tiles.put((short) id, tile);
 		if (id >= 0 && id < byId.length) byId[id] = tile; // LAZYVM-PERF: see get(short)
+		byName.clear(); // LAZYVM-PERF: a name may now mean another tile, see get(String)
 		Logging.TILES.debug("Adding " + tile.name + " to tile list with id " + id);
 		tile.id = (short) id;
 	}
@@ -242,14 +243,14 @@ public final class Tiles {
 	private static int overflowCheck = 0;
 
 	// LAZYVM-PERF: tiles ask for each other by name every tick, and each ask upper-cases the name
-	// and walks every tile. Names found are kept here, by the name exactly as asked; the list is
-	// only filled by initTileList, which empties this.
+	// and walks every tile. Names found are kept here, by the name exactly as asked; initTileList
+	// and add, which change the list, empty this.
 	private static final HashMap<String, Tile> byName = new HashMap<>();
 
 	public static Tile get(String name) {
 		//System.out.println("Getting from tile list: " + name);
 
-		String asked = name;
+		String asked = name.toString(); // a null name fails here, as before, without counting
 
 		overflowCheck++;
 

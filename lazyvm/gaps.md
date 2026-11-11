@@ -179,6 +179,38 @@ whole night script (240 frames), 0 pixels differ before the light overlay,
 and with it 5 night frames differ in 6745 pixels by 1 in a channel (the
 table pass rounds once, the two native blends twice).
 
+LazyVM's second performance pass (S11-06, branch `claude/s11-06-perf`) and
+the port's `LAZYVM-PERF` changes (branch `lazyvm-perf`), measured with
+`scripts/walk.keys` on a saved world, headless. The stats line now also
+gives the worst tick and frame of each second.
+
+| Phase | Before (LazyVM `54de4ed`, port `ec1e0408`) | After (both branches) |
+|---|---|---|
+| Standing in the world | 20 to 24 fps; 35 to 40 ms/frame | 58 to 61 fps (the cap); 10 to 12 ms/frame |
+| Walking | 3 to 6 fps; 13 to 16 ms/tick, 32 to 69 ms/frame | 45 to 54 fps; 4 to 7 ms/tick, 7 to 9 ms/frame |
+| Entering a saved world | ticks of 3 to 75 s for about 3 minutes | one tick of 55 s or so, then 2 s |
+
+What it took, roughly by weight:
+
+- The port (`LAZYVM-PERF`): `Tiles.get(short)` from an array instead of a
+  `HashMap<Short, Tile>`; `Tiles.get(String)` from a name cache instead of a
+  scan; `Level.getTreeType` cached (two noise grids per call, nine calls per
+  tree tile per frame); `ChunkManager.getChunk` remembering the last chunk;
+  `Level.getEntityArray` kept until the entity set changes;
+  `Rectangle.intersects` and chunk indexing without calls. Each is a lookup a
+  JIT makes cheap and an interpreter does not; none changes what is computed.
+- LazyVM: invokes, returns and `long`/`float`/`double` arithmetic in the tight
+  loop, frames reused in place, `HashMap` lookups and view walks with fewer
+  calls, `String.split` on one character without a `Pattern`.
+
+Still short of 60 while walking: a tick and a frame together take 11 to
+16 ms of the 16.7, so a slow tick drops a frame; collections (one a second
+while walking, 17 to 40 ms) drop another. World generation still costs a
+long tick when entering a world (`Simplex` noise, in the interpreter).
+Pixel checks: `scripts/night.keys` gives the same `day.ppm` before and
+after; later shots differ run to run on either build, as the biomes seed
+their `Random` from `System.nanoTime()` (stairs and ores land elsewhere).
+
 ## lazy.gfx: what the port needed and did not find
 
 Not LazyVM gaps in the java.* sense, but notes for the `lazy.gfx` API.

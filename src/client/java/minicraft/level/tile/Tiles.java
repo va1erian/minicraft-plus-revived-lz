@@ -25,12 +25,17 @@ public final class Tiles {
 	public static ArrayList<String> oldids = new ArrayList<>();
 
 	private static HashMap<Short, Tile> tiles = new HashMap<>();
+	// LAZYVM-PERF: every tile drawn or ticked is looked up by id, and each lookup boxed the id
+	// twice into a HashMap<Short, Tile> call; on LazyVM, an interpreter, that was a tenth of a
+	// frame. Ids 0-255, all the game uses, are mirrored here, kept with tiles where it changes.
+	private static final Tile[] byId = new Tile[256];
 
 	// Standard tile explosion blacklist
 	// Tiles (as IDs) included cannot be damaged by explosions such as by TNTs and creepers.
 	public static final Set<Short> explosionBlacklist;
 
 	public static void initTileList() {
+		byName.clear();
 		Logging.TILES.debug("Initializing tile list...");
 
 		tiles.put((short) 0, new GrassTile("Grass"));
@@ -114,6 +119,7 @@ public final class Tiles {
 		tiles.put((short) 255, new ConnectTile());
 
 		for (short i = 0; i < 256; i++) {
+			byId[i] = tiles.get(i); // LAZYVM-PERF: see get(short)
 			if (tiles.get(i) == null) continue;
 			tiles.get(i).id = (short) i;
 		}
@@ -122,6 +128,8 @@ public final class Tiles {
 
 	static void add(int id, Tile tile) {
 		tiles.put((short) id, tile);
+		if (id >= 0 && id < byId.length) byId[id] = tile; // LAZYVM-PERF: see get(short)
+		byName.clear(); // LAZYVM-PERF: a name may now mean another tile, see get(String)
 		Logging.TILES.debug("Adding " + tile.name + " to tile list with id " + id);
 		tile.id = (short) id;
 	}
@@ -234,17 +242,31 @@ public final class Tiles {
 
 	private static int overflowCheck = 0;
 
+	// LAZYVM-PERF: tiles ask for each other by name every tick, and each ask upper-cases the name
+	// and walks every tile. Names found are kept here, by the name exactly as asked; initTileList
+	// and add, which change the list, empty this.
+	private static final HashMap<String, Tile> byName = new HashMap<>();
+
 	public static Tile get(String name) {
 		//System.out.println("Getting from tile list: " + name);
 
-		name = name.toUpperCase();
+		String asked = name.toString(); // a null name fails here, as before, without counting
 
 		overflowCheck++;
 
 		if (overflowCheck > 50) {
+			name = name.toUpperCase();
 			CrashHandler.crashHandle(new StackOverflowError("Tiles#get: " + name), new CrashHandler.ErrorInfo("Tile fetching Stacking",
 				CrashHandler.ErrorInfo.ErrorType.SERIOUS, "STACKOVERFLOW prevented in Tiles.get(), on: " + name));
 		}
+
+		Tile known = byName.get(asked);
+		if (known != null) {
+			overflowCheck = 0;
+			return known;
+		}
+
+		name = name.toUpperCase();
 
 		//System.out.println("Fetching tile " + name);
 
@@ -265,6 +287,8 @@ public final class Tiles {
 		if (getting == null) {
 			Logging.TILES.info("Invalid tile requested: " + name);
 			getting = tiles.get((short) 0);
+		} else {
+			byName.put(asked, getting);
 		}
 
 		overflowCheck = 0;
@@ -273,6 +297,7 @@ public final class Tiles {
 
 	public static Tile get(short id) {
 		//System.out.println("Requesting tile by id: " + id);
+		if (id >= 0 && id < byId.length && byId[id] != null) return byId[id];
 		if (tiles.get(id) != null) {
 			return tiles.get(id);
 		} else {

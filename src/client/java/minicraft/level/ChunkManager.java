@@ -15,6 +15,9 @@ import minicraft.level.tile.Tiles;
 public class ChunkManager {
 
 	public static final int CHUNK_SIZE = 64;
+	// LAZYVM-PERF: CHUNK_SIZE is a power of two, so floorDiv and floorMod by it are a shift and a
+	// mask; every tile read did both through Math calls, which cost a frame each on LazyVM.
+	private static final int CHUNK_SHIFT = Integer.numberOfTrailingZeros(CHUNK_SIZE);
 	public static final int CHUNK_STAGE_NONE = 0;
 	public static final int CHUNK_STAGE_PRIMED_NOISE = 1;
 	public static final int CHUNK_STAGE_ASSIGNED_BIOMES = 2;
@@ -39,20 +42,38 @@ public class ChunkManager {
 		return out;
 	}
 
+	// LAZYVM-PERF: every tile read and write comes through here, and most hit the chunk of the
+	// one before. Remembering it, and making one lookup per map instead of five, matters on
+	// LazyVM, an interpreter, where each boxed HashMap call costs what a JIT would hide.
+	// Chunks are only ever added to the maps, so a remembered chunk stays the right one.
+	private int lastChunkX, lastChunkY;
+	private Chunk lastChunk;
+
 	private Chunk getChunk(int cX, int cY) {
+		if(lastChunk != null && cX == lastChunkX && cY == lastChunkY)
+			return lastChunk;
 		// If [cX][cY] are not keys in chunks, put them there
-		if(!chunks.containsKey(cX))
-			chunks.put(cX, new HashMap<>());
-		if(!chunks.get(cX).containsKey(cY))
-			chunks.get(cX).put(cY, new Chunk());
-		return chunks.get(cX).get(cY);
+		Map<Integer, Chunk> column = chunks.get(cX);
+		if(column == null) {
+			column = new HashMap<>();
+			chunks.put(cX, column);
+		}
+		Chunk chunk = column.get(cY);
+		if(chunk == null) {
+			chunk = new Chunk();
+			column.put(cY, chunk);
+		}
+		lastChunkX = cX;
+		lastChunkY = cY;
+		lastChunk = chunk;
+		return chunk;
 	}
 
 	/**
 	 * Return the chunk  in which the tileX and tileY land
 	 */
 	private Chunk getTileChunk(int tileX, int tileY) {
-		int cX = Math.floorDiv(tileX, CHUNK_SIZE), cY = Math.floorDiv(tileY, CHUNK_SIZE);
+		int cX = tileX >> CHUNK_SHIFT, cY = tileY >> CHUNK_SHIFT; // LAZYVM-PERF: floorDiv
 		return getChunk(cX, cY);
 	}
 
@@ -124,7 +145,7 @@ public class ChunkManager {
 		}
 
 		public TileDat getTileDat(int tileX, int tileY) {
-			int index = Math.floorMod(tileX, CHUNK_SIZE) + Math.floorMod(tileY, CHUNK_SIZE) * CHUNK_SIZE;
+			int index = (tileX & (CHUNK_SIZE - 1)) + (tileY & (CHUNK_SIZE - 1)) * CHUNK_SIZE; // LAZYVM-PERF: floorMod
 			if(tiles[index] == null)
 				tiles[index] = new TileDat((short)0);
 			return tiles[index];

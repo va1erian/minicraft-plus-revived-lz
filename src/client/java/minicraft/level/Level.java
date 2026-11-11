@@ -437,6 +437,7 @@ public class Level {
 
 				synchronized (entityLock) {
 					entities.add(entity);
+					entityArray = null;
 					if (entity instanceof Player) {
 						players.add((Player) entity);
 					}
@@ -472,6 +473,7 @@ public class Level {
 			entity.remove(this); // This will safely fail if the entity's level doesn't match this one.
 			synchronized (entityLock) {
 				entities.remove(entity);
+				entityArray = null;
 			}
 
 			if (entity instanceof Player)
@@ -649,12 +651,27 @@ public class Level {
 		}
 	}
 
+	// LAZYVM-PERF: a tree tile asks for its own type and its eight neighbours' every frame,
+	// and each answer is two noise samples. The answer depends on (x, y) alone (LevelGen's
+	// noise has a fixed seed), so the last answers are kept in a small direct-mapped table.
+	private static final int TREE_CACHE_SIZE = 4096; // a power of two
+	private final long[] treeCacheKeys = new long[TREE_CACHE_SIZE];
+	private final TreeType[] treeCacheTypes = new TreeType[TREE_CACHE_SIZE];
+
 	public TreeTile.TreeType getTreeType(int x, int y) {
+		long key = ((long) x << 32) | (y & 0xFFFFFFFFL);
+		int slot = (x * 31 + y) & (TREE_CACHE_SIZE - 1);
+		TreeType cached = treeCacheTypes[slot];
+		if (cached != null && treeCacheKeys[slot] == key) return cached;
+
 		LevelGen noise1 = new LevelGen(x, y, 1, 1, 32, -1);
 		LevelGen noise2 = new LevelGen(x, y, 1, 1, 32, -2);
 
 		int idx = (int) Math.round(Math.abs(noise1.values[0] - noise2.values[0]) * 3 - 2);
-		return (idx >= TreeType.values().length || idx < 0) ? TreeType.OAK : TreeType.values()[idx];
+		TreeType type = (idx >= TreeType.values().length || idx < 0) ? TreeType.OAK : TreeType.values()[idx];
+		treeCacheKeys[slot] = key;
+		treeCacheTypes[slot] = type;
+		return type;
 	}
 
 	public Tile getTile(int x, int y) {
@@ -797,21 +814,35 @@ public class Level {
 	}
 
 	public void clearEntities() {
-		entities.clear();
+		synchronized (entityLock) {
+			entities.clear();
+			entityArray = null;
+		}
 	}
 
+	// LAZYVM-PERF: every moving entity asks for the entities near it on every step, and each ask
+	// copied the whole entity set; on LazyVM, an interpreter, that walk dominated a tick. The copy
+	// is kept until the set changes (entityArray is cleared wherever entities is changed), and
+	// callers get a clone of it, as they got a fresh array before.
+	private Entity[] entityArray;
+
 	public Entity[] getEntityArray() {
-		Entity[] entityArray;
-		int index = 0;
+		return entitySnapshot().clone();
+	}
 
+	/** The kept copy itself, for loops in this class that only read it. */
+	private Entity[] entitySnapshot() {
 		synchronized (entityLock) {
-			entityArray = new Entity[entities.size()];
-			for (Entity entity : entities) {
-				entityArray[index++] = entity;
+			if (entityArray == null) {
+				Entity[] all = new Entity[entities.size()];
+				int index = 0;
+				for (Entity entity : entities) {
+					all[index++] = entity;
+				}
+				entityArray = all;
 			}
+			return entityArray;
 		}
-
-		return entityArray;
 	}
 
 	public List<Entity> getEntitiesInTiles(int xt, int yt, int radius) {
@@ -890,7 +921,7 @@ public class Level {
 
 	public List<Entity> getEntitiesInRect(Rectangle area) {
 		List<Entity> result = new ArrayList<>();
-		for (Entity e : getEntityArray()) {
+		for (Entity e : entitySnapshot()) { // LAZYVM-PERF: the kept copy, see getEntityArray
 			if (e.isTouching(area))
 				result.add(e);
 		}
@@ -899,7 +930,7 @@ public class Level {
 
 	public List<Entity> getEntitiesInRect(Predicate<Entity> filter, Rectangle area) {
 		List<Entity> result = new LinkedList<>();
-		for (Entity entity : entities) {
+		for (Entity entity : entitySnapshot()) { // LAZYVM-PERF: the kept copy, see getEntityArray
 			if (filter.test(entity) && entity.isTouching(area)) {
 				result.add(entity);
 			}

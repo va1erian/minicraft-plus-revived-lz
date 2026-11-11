@@ -39,13 +39,31 @@ public class ChunkManager {
 		return out;
 	}
 
+	// LAZYVM-PERF: every tile read and write comes through here, and most hit the chunk of the
+	// one before. Remembering it, and making one lookup per map instead of five, matters on
+	// LazyVM, an interpreter, where each boxed HashMap call costs what a JIT would hide.
+	// Chunks are only ever added to the maps, so a remembered chunk stays the right one.
+	private int lastChunkX, lastChunkY;
+	private Chunk lastChunk;
+
 	private Chunk getChunk(int cX, int cY) {
+		if(lastChunk != null && cX == lastChunkX && cY == lastChunkY)
+			return lastChunk;
 		// If [cX][cY] are not keys in chunks, put them there
-		if(!chunks.containsKey(cX))
-			chunks.put(cX, new HashMap<>());
-		if(!chunks.get(cX).containsKey(cY))
-			chunks.get(cX).put(cY, new Chunk());
-		return chunks.get(cX).get(cY);
+		Map<Integer, Chunk> column = chunks.get(cX);
+		if(column == null) {
+			column = new HashMap<>();
+			chunks.put(cX, column);
+		}
+		Chunk chunk = column.get(cY);
+		if(chunk == null) {
+			chunk = new Chunk();
+			column.put(cY, chunk);
+		}
+		lastChunkX = cX;
+		lastChunkY = cY;
+		lastChunk = chunk;
+		return chunk;
 	}
 
 	/**

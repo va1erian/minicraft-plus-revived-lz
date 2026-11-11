@@ -649,12 +649,27 @@ public class Level {
 		}
 	}
 
+	// LAZYVM-PERF: a tree tile asks for its own type and its eight neighbours' every frame,
+	// and each answer is two noise samples. The answer depends on (x, y) alone (LevelGen's
+	// noise has a fixed seed), so the last answers are kept in a small direct-mapped table.
+	private static final int TREE_CACHE_SIZE = 4096; // a power of two
+	private final long[] treeCacheKeys = new long[TREE_CACHE_SIZE];
+	private final TreeType[] treeCacheTypes = new TreeType[TREE_CACHE_SIZE];
+
 	public TreeTile.TreeType getTreeType(int x, int y) {
+		long key = ((long) x << 32) | (y & 0xFFFFFFFFL);
+		int slot = (x * 31 + y) & (TREE_CACHE_SIZE - 1);
+		TreeType cached = treeCacheTypes[slot];
+		if (cached != null && treeCacheKeys[slot] == key) return cached;
+
 		LevelGen noise1 = new LevelGen(x, y, 1, 1, 32, -1);
 		LevelGen noise2 = new LevelGen(x, y, 1, 1, 32, -2);
 
 		int idx = (int) Math.round(Math.abs(noise1.values[0] - noise2.values[0]) * 3 - 2);
-		return (idx >= TreeType.values().length || idx < 0) ? TreeType.OAK : TreeType.values()[idx];
+		TreeType type = (idx >= TreeType.values().length || idx < 0) ? TreeType.OAK : TreeType.values()[idx];
+		treeCacheKeys[slot] = key;
+		treeCacheTypes[slot] = type;
+		return type;
 	}
 
 	public Tile getTile(int x, int y) {

@@ -31,6 +31,7 @@ public final class Tiles {
 	public static final Set<Short> explosionBlacklist;
 
 	public static void initTileList() {
+		byName.clear();
 		Logging.TILES.debug("Initializing tile list...");
 
 		tiles.put((short) 0, new GrassTile("Grass"));
@@ -234,17 +235,31 @@ public final class Tiles {
 
 	private static int overflowCheck = 0;
 
+	// LAZYVM-PERF: tiles ask for each other by name every tick, and each ask upper-cases the name
+	// and walks every tile. Names found are kept here, by the name exactly as asked; the list is
+	// only filled by initTileList, which empties this.
+	private static final HashMap<String, Tile> byName = new HashMap<>();
+
 	public static Tile get(String name) {
 		//System.out.println("Getting from tile list: " + name);
 
-		name = name.toUpperCase();
+		String asked = name;
 
 		overflowCheck++;
 
 		if (overflowCheck > 50) {
+			name = name.toUpperCase();
 			CrashHandler.crashHandle(new StackOverflowError("Tiles#get: " + name), new CrashHandler.ErrorInfo("Tile fetching Stacking",
 				CrashHandler.ErrorInfo.ErrorType.SERIOUS, "STACKOVERFLOW prevented in Tiles.get(), on: " + name));
 		}
+
+		Tile known = byName.get(asked);
+		if (known != null) {
+			overflowCheck = 0;
+			return known;
+		}
+
+		name = name.toUpperCase();
 
 		//System.out.println("Fetching tile " + name);
 
@@ -265,6 +280,8 @@ public final class Tiles {
 		if (getting == null) {
 			Logging.TILES.info("Invalid tile requested: " + name);
 			getting = tiles.get((short) 0);
+		} else {
+			byName.put(asked, getting);
 		}
 
 		overflowCheck = 0;

@@ -1,0 +1,23 @@
+# Load the first saved world, then walk a long loop, printing stats every second (perf runs).
+wait 120
+press ENTER
+wait 30
+press ENTER
+wait 30
+press ENTER
+wait 120
+stats
+press D 150
+press S 150
+press A 150
+press W 150
+stats
+press D 150
+press S 150
+press A 150
+press W 150
+stats
+press D 150
+press W 150
+stats
+quit

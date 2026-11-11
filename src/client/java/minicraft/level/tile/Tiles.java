@@ -25,6 +25,10 @@ public final class Tiles {
 	public static ArrayList<String> oldids = new ArrayList<>();
 
 	private static HashMap<Short, Tile> tiles = new HashMap<>();
+	// LAZYVM-PERF: every tile drawn or ticked is looked up by id, and each lookup boxed the id
+	// twice into a HashMap<Short, Tile> call; on LazyVM, an interpreter, that was a tenth of a
+	// frame. Ids 0-255, all the game uses, are mirrored here, kept with tiles where it changes.
+	private static final Tile[] byId = new Tile[256];
 
 	// Standard tile explosion blacklist
 	// Tiles (as IDs) included cannot be damaged by explosions such as by TNTs and creepers.
@@ -115,6 +119,7 @@ public final class Tiles {
 		tiles.put((short) 255, new ConnectTile());
 
 		for (short i = 0; i < 256; i++) {
+			byId[i] = tiles.get(i); // LAZYVM-PERF: see get(short)
 			if (tiles.get(i) == null) continue;
 			tiles.get(i).id = (short) i;
 		}
@@ -123,6 +128,7 @@ public final class Tiles {
 
 	static void add(int id, Tile tile) {
 		tiles.put((short) id, tile);
+		if (id >= 0 && id < byId.length) byId[id] = tile; // LAZYVM-PERF: see get(short)
 		Logging.TILES.debug("Adding " + tile.name + " to tile list with id " + id);
 		tile.id = (short) id;
 	}
@@ -290,6 +296,7 @@ public final class Tiles {
 
 	public static Tile get(short id) {
 		//System.out.println("Requesting tile by id: " + id);
+		if (id >= 0 && id < byId.length && byId[id] != null) return byId[id];
 		if (tiles.get(id) != null) {
 			return tiles.get(id);
 		} else {
